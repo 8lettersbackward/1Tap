@@ -256,7 +256,6 @@ export default function DashboardPage() {
     if (!user || !db) return;
     setRegisterLoading(true);
     
-    // finalId is effectively our buddyId/deviceId
     const finalId = formData.deviceId || `ID-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
     const deviceRef = doc(db, "users", user.uid, "devices", finalId);
     
@@ -281,15 +280,12 @@ export default function DashboardPage() {
       })
     };
 
-    // Primary Save
     setDoc(deviceRef, payload, { merge: true })
       .then(() => {
         const label = category === 'buddy' ? 'Buddy' : 'Node';
         createNotification(`New ${label} registered: ${formData.name}`);
         
         // MIRROR TO ESP QUEUE
-        // We use a unique ID for the queue entry to prevent overwrites if needed, 
-        // or a fixed path if the ESP only needs the latest for that specific buddy.
         if (category === 'buddy') {
           const espQueueRef = doc(db, "esp_queue", `${user.uid}_${finalId}`);
           setDoc(espQueueRef, {
@@ -298,9 +294,9 @@ export default function DashboardPage() {
             priority: formData.priority,
             uid: user.uid,
             buddyId: finalId,
+            processed: false,
             timestamp: serverTimestamp()
           }).catch(err => {
-            // Standard error handling for background task
             console.warn("ESP Mirroring background task failed", err);
           });
         }
@@ -321,6 +317,7 @@ export default function DashboardPage() {
     if (!user || !db || !editingDevice) return;
     const deviceRef = doc(db, "users", user.uid, "devices", editingDevice.id);
     const { id, ...updateData } = editingDevice;
+    
     setDoc(deviceRef, updateData, { merge: true })
       .then(() => {
         createNotification(`Updated registry for: ${editingDevice.name}`);
@@ -334,6 +331,7 @@ export default function DashboardPage() {
             priority: editingDevice.priority,
             uid: user.uid,
             buddyId: editingDevice.id,
+            processed: false,
             timestamp: serverTimestamp()
           }, { merge: true });
         }
@@ -349,7 +347,6 @@ export default function DashboardPage() {
     const deviceRef = doc(db, "users", user.uid, "devices", deviceToDelete.id);
     
     deleteDoc(deviceRef).then(() => {
-      // Also remove from ESP queue to keep it clean
       if (deviceToDelete.category === 'buddy') {
         const espQueueRef = doc(db, "esp_queue", `${user.uid}_${deviceToDelete.id}`);
         deleteDoc(espQueueRef);

@@ -58,6 +58,7 @@
         "priority": { "type": "string" },
         "uid": { "type": "string" },
         "buddyId": { "type": "string" },
+        "processed": { "type": "boolean" },
         "timestamp": { "type": "string", "format": "date-time" }
       }
     }
