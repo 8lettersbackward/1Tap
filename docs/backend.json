@@ -47,6 +47,19 @@
         "latitude": { "type": "number" },
         "longitude": { "type": "number" }
       }
+    },
+    "ESPQueueEntry": {
+      "title": "ESP Sync Entry",
+      "description": "Data mirrored for hardware synchronization (ESP32/ESP8266).",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "priority": { "type": "string" },
+        "uid": { "type": "string" },
+        "buddyId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -64,6 +77,10 @@
     "/users/{userId}/notifications/{notificationId}": {
       "schema": "Notification",
       "description": "Personal safety alert history."
+    },
+    "/esp_queue/{queueId}": {
+      "schema": "ESPQueueEntry",
+      "description": "Queue for hardware device synchronization."
     }
   }
 }

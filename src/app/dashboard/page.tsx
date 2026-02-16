@@ -256,6 +256,7 @@ export default function DashboardPage() {
     if (!user || !db) return;
     setRegisterLoading(true);
     
+    // finalId is effectively our buddyId/deviceId
     const finalId = formData.deviceId || `ID-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
     const deviceRef = doc(db, "users", user.uid, "devices", finalId);
     
@@ -280,10 +281,30 @@ export default function DashboardPage() {
       })
     };
 
+    // Primary Save
     setDoc(deviceRef, payload, { merge: true })
       .then(() => {
         const label = category === 'buddy' ? 'Buddy' : 'Node';
         createNotification(`New ${label} registered: ${formData.name}`);
+        
+        // MIRROR TO ESP QUEUE
+        // We use a unique ID for the queue entry to prevent overwrites if needed, 
+        // or a fixed path if the ESP only needs the latest for that specific buddy.
+        if (category === 'buddy') {
+          const espQueueRef = doc(db, "esp_queue", `${user.uid}_${finalId}`);
+          setDoc(espQueueRef, {
+            name: formData.name,
+            phone: formData.phoneNumber,
+            priority: formData.priority,
+            uid: user.uid,
+            buddyId: finalId,
+            timestamp: serverTimestamp()
+          }).catch(err => {
+            // Standard error handling for background task
+            console.warn("ESP Mirroring background task failed", err);
+          });
+        }
+
         setFormData({ name: '', deviceId: '', type: 'SOS Beacon', status: 'online', phoneNumber: '', group: 'Friend', role: 'Primary Emergency Contact', priority: 'High', alertGroups: [], specialData: '' });
         setIsAddBuddyDialogOpen(false);
         setIsAddNodeDialogOpen(false);
@@ -303,6 +324,20 @@ export default function DashboardPage() {
     setDoc(deviceRef, updateData, { merge: true })
       .then(() => {
         createNotification(`Updated registry for: ${editingDevice.name}`);
+        
+        // Mirror update to ESP queue if it's a buddy
+        if (editingDevice.category === 'buddy') {
+          const espQueueRef = doc(db, "esp_queue", `${user.uid}_${editingDevice.id}`);
+          setDoc(espQueueRef, {
+            name: editingDevice.name,
+            phone: editingDevice.phoneNumber,
+            priority: editingDevice.priority,
+            uid: user.uid,
+            buddyId: editingDevice.id,
+            timestamp: serverTimestamp()
+          }, { merge: true });
+        }
+
         setIsEditDialogOpen(false);
         setEditingDevice(null);
         toast({ title: "Registry Updated", description: "Changes saved to the encrypted network." });
@@ -312,7 +347,14 @@ export default function DashboardPage() {
   const confirmDeleteDevice = () => {
     if (!user || !db || !deviceToDelete) return;
     const deviceRef = doc(db, "users", user.uid, "devices", deviceToDelete.id);
+    
     deleteDoc(deviceRef).then(() => {
+      // Also remove from ESP queue to keep it clean
+      if (deviceToDelete.category === 'buddy') {
+        const espQueueRef = doc(db, "esp_queue", `${user.uid}_${deviceToDelete.id}`);
+        deleteDoc(espQueueRef);
+      }
+
       createNotification(`Removed from network: ${deviceToDelete.name}`);
       toast({ title: "Asset Purged", description: "Removed from your security profile." });
       setIsDeleteDialogOpen(false);
