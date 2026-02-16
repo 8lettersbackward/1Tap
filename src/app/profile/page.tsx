@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useUser, useFirestore, useAuth, useDoc } from "@/firebase";
+import { useUser, useDatabase, useRtdb, useAuth } from "@/firebase";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -12,13 +11,13 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { updatePassword, updateProfile, signOut } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { ref, set } from "firebase/database";
 import { Loader2, User as UserIcon, Shield, Bell, LogOut, IdCard, Mail, Camera, ArrowLeft } from "lucide-react";
 
 export default function ProfilePage() {
   const { user, loading: userLoading } = useUser();
   const auth = useAuth();
-  const db = useFirestore();
+  const rtdb = useDatabase();
   const router = useRouter();
   const { toast } = useToast();
   
@@ -27,13 +26,8 @@ export default function ProfilePage() {
   const [newPassword, setNewPassword] = useState("");
   const [updating, setUpdating] = useState(false);
 
-  // Fetch profile data from Firestore for persistence
-  const profileRef = useMemo(() => {
-    if (!db || !user) return null;
-    return doc(db, "users", user.uid);
-  }, [db, user]);
-
-  const { data: profileData, loading: profileLoading } = useDoc(profileRef);
+  const profileRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/profile`) : null, [rtdb, user]);
+  const { data: profileData, loading: profileLoading } = useRtdb(profileRef);
 
   useEffect(() => {
     if (!userLoading && !user) {
@@ -47,24 +41,23 @@ export default function ProfilePage() {
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !db) return;
+    if (!user || !rtdb) return;
     setUpdating(true);
     
     try {
-      // Update Firebase Auth Profile
       await updateProfile(user, { 
         displayName: displayName,
         photoURL: avatarUrl 
       });
 
-      // Update Firestore Profile Document
-      const userRef = doc(db, "users", user.uid);
-      await setDoc(userRef, {
+      const userProfileRef = ref(rtdb, `users/${user.uid}/profile`);
+      await set(userProfileRef, {
+        ...profileData,
         displayName,
         email: user.email,
         avatarUrl,
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
+        updatedAt: Date.now()
+      });
 
       toast({ 
         title: "Profile Synchronized", 

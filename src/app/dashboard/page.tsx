@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useUser, useFirestore, useCollection, useFirebase, useDoc } from "@/firebase";
+import { useUser, useDatabase, useRtdb, useFirebase } from "@/firebase";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -19,7 +18,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -75,7 +73,7 @@ import {
   ScrollText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { doc, setDoc, collection, deleteDoc, serverTimestamp, addDoc, query, orderBy, limit } from "firebase/firestore";
+import { ref, set, push, remove, serverTimestamp, child } from "firebase/database";
 import { signOut } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
@@ -90,7 +88,7 @@ const DEFAULT_BUDDY_GROUPS = ["Family", "Friend", "Close Friend", "Segurulo", "O
 export default function DashboardPage() {
   const { user, loading: userLoading } = useUser();
   const { auth } = useFirebase();
-  const db = useFirestore();
+  const rtdb = useDatabase();
   const router = useRouter();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -134,12 +132,12 @@ export default function DashboardPage() {
     setTheme(isDark ? 'dark' : 'light');
   }, [user, userLoading, router]);
 
-  const profileRef = useMemo(() => {
-    if (!db || !user) return null;
-    return doc(db, "users", user.uid);
-  }, [db, user]);
+  // Profiles and Groups in RTDB
+  const profileRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/profile`) : null, [rtdb, user]);
+  const { data: profileData } = useRtdb(profileRef);
 
-  const { data: profileData } = useDoc(profileRef);
+  const groupsRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/buddyGroups`) : null, [rtdb, user]);
+  const { data: customGroupsData } = useRtdb(groupsRef);
 
   useEffect(() => {
     if (profileData) {
@@ -150,17 +148,10 @@ export default function DashboardPage() {
     }
   }, [profileData]);
 
-  const groupsQuery = useMemo(() => {
-    if (!db || !user) return null;
-    return collection(db, "users", user.uid, "buddyGroups");
-  }, [db, user]);
-
-  const { data: customGroups } = useCollection(groupsQuery);
-
   const buddyGroups = useMemo(() => {
-    const customNames = (customGroups || []).map((g: any) => g.name);
+    const customNames = customGroupsData ? Object.values(customGroupsData).map((g: any) => g.name) : [];
     return Array.from(new Set([...DEFAULT_BUDDY_GROUPS, ...customNames]));
-  }, [customGroups]);
+  }, [customGroupsData]);
 
   const toggleTheme = (isDark: boolean) => {
     const newTheme = isDark ? 'dark' : 'light';
@@ -176,26 +167,26 @@ export default function DashboardPage() {
     signOut(auth).then(() => router.push("/login"));
   };
 
-  const devicesQuery = useMemo(() => {
-    if (!db || !user) return null;
-    return collection(db, "users", user.uid, "devices");
-  }, [db, user]);
+  const devicesRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/devices`) : null, [rtdb, user]);
+  const { data: devicesData, loading: devicesLoading } = useRtdb(devicesRef);
 
-  const { data: devices, loading: devicesLoading } = useCollection(devicesQuery);
+  const devices = useMemo(() => {
+    if (!devicesData) return [];
+    return Object.entries(devicesData).map(([id, val]: [string, any]) => ({ ...val, id }));
+  }, [devicesData]);
 
-  const notificationsQuery = useMemo(() => {
-    if (!db || !user) return null;
-    return query(
-      collection(db, "users", user.uid, "notifications"),
-      orderBy("createdAt", "desc"),
-      limit(50)
-    );
-  }, [db, user]);
+  const notificationsRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/notifications`) : null, [rtdb, user]);
+  const { data: notificationsData } = useRtdb(notificationsRef);
 
-  const { data: notifications } = useCollection(notificationsQuery);
+  const notifications = useMemo(() => {
+    if (!notificationsData) return [];
+    return Object.entries(notificationsData)
+      .map(([id, val]: [string, any]) => ({ ...val, id }))
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  }, [notificationsData]);
 
   const statusStats = useMemo(() => {
-    if (!devices || devices.length === 0) return { online: 0, offline: 0, error: 0, total: 0 };
+    if (devices.length === 0) return { online: 0, offline: 0, error: 0, total: 0 };
     return devices.reduce((acc: any, d: any) => {
       acc[d.status] = (acc[d.status] || 0) + 1;
       acc.total++;
@@ -216,7 +207,6 @@ export default function DashboardPage() {
   };
 
   const filteredDevices = useMemo(() => {
-    if (!devices) return [];
     let filtered = devices;
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
@@ -241,9 +231,9 @@ export default function DashboardPage() {
   }, [devices, searchQuery, activeTab]);
 
   const createNotification = (message: string) => {
-    if (!user || !db) return;
-    const notificationsRef = collection(db, "users", user.uid, "notifications");
-    addDoc(notificationsRef, {
+    if (!user || !rtdb) return;
+    const notifRef = push(ref(rtdb, `users/${user.uid}/notifications`));
+    set(notifRef, {
       userId: user.uid,
       message,
       read: false,
@@ -253,11 +243,11 @@ export default function DashboardPage() {
 
   const handleRegisterDevice = (e: React.FormEvent, category: 'buddy' | 'node') => {
     e.preventDefault();
-    if (!user || !db) return;
+    if (!user || !rtdb) return;
     setRegisterLoading(true);
     
     const finalId = formData.deviceId || `ID-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-    const deviceRef = doc(db, "users", user.uid, "devices", finalId);
+    const devicePath = `users/${user.uid}/devices/${finalId}`;
     
     const payload = {
       name: formData.name,
@@ -265,8 +255,8 @@ export default function DashboardPage() {
       status: 'online', 
       category: category,
       ownerId: user.uid,
-      registeredAt: serverTimestamp(),
-      lastActiveAt: serverTimestamp(),
+      registeredAt: Date.now(),
+      lastActiveAt: Date.now(),
       ...(category === 'buddy' ? {
         phoneNumber: formData.phoneNumber,
         group: formData.group,
@@ -280,15 +270,14 @@ export default function DashboardPage() {
       })
     };
 
-    setDoc(deviceRef, payload, { merge: true })
+    set(ref(rtdb, devicePath), payload)
       .then(() => {
         const label = category === 'buddy' ? 'Buddy' : 'Node';
         createNotification(`New ${label} registered: ${formData.name}`);
         
         // MIRROR TO ESP QUEUE
         if (category === 'buddy') {
-          const espQueueRef = doc(db, "esp_queue", `${user.uid}_${finalId}`);
-          setDoc(espQueueRef, {
+          set(ref(rtdb, `esp_queue/${user.uid}/${finalId}`), {
             name: formData.name,
             phone: formData.phoneNumber,
             priority: formData.priority,
@@ -296,9 +285,7 @@ export default function DashboardPage() {
             buddyId: finalId,
             processed: false,
             timestamp: serverTimestamp()
-          }).catch(err => {
-            console.warn("ESP Mirroring background task failed", err);
-          });
+          }).catch(err => console.warn("ESP Mirroring failed", err));
         }
 
         setFormData({ name: '', deviceId: '', type: 'SOS Beacon', status: 'online', phoneNumber: '', group: 'Friend', role: 'Primary Emergency Contact', priority: 'High', alertGroups: [], specialData: '' });
@@ -314,18 +301,15 @@ export default function DashboardPage() {
 
   const handleUpdateDevice = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !db || !editingDevice) return;
-    const deviceRef = doc(db, "users", user.uid, "devices", editingDevice.id);
-    const { id, ...updateData } = editingDevice;
+    if (!user || !rtdb || !editingDevice) return;
+    const deviceRef = ref(rtdb, `users/${user.uid}/devices/${editingDevice.id}`);
     
-    setDoc(deviceRef, updateData, { merge: true })
+    set(deviceRef, editingDevice)
       .then(() => {
         createNotification(`Updated registry for: ${editingDevice.name}`);
         
-        // Mirror update to ESP queue if it's a buddy
         if (editingDevice.category === 'buddy') {
-          const espQueueRef = doc(db, "esp_queue", `${user.uid}_${editingDevice.id}`);
-          setDoc(espQueueRef, {
+          set(ref(rtdb, `esp_queue/${user.uid}/${editingDevice.id}`), {
             name: editingDevice.name,
             phone: editingDevice.phoneNumber,
             priority: editingDevice.priority,
@@ -333,7 +317,7 @@ export default function DashboardPage() {
             buddyId: editingDevice.id,
             processed: false,
             timestamp: serverTimestamp()
-          }, { merge: true });
+          });
         }
 
         setIsEditDialogOpen(false);
@@ -343,13 +327,11 @@ export default function DashboardPage() {
   };
 
   const confirmDeleteDevice = () => {
-    if (!user || !db || !deviceToDelete) return;
-    const deviceRef = doc(db, "users", user.uid, "devices", deviceToDelete.id);
+    if (!user || !rtdb || !deviceToDelete) return;
     
-    deleteDoc(deviceRef).then(() => {
+    remove(ref(rtdb, `users/${user.uid}/devices/${deviceToDelete.id}`)).then(() => {
       if (deviceToDelete.category === 'buddy') {
-        const espQueueRef = doc(db, "esp_queue", `${user.uid}_${deviceToDelete.id}`);
-        deleteDoc(espQueueRef);
+        remove(ref(rtdb, `esp_queue/${user.uid}/${deviceToDelete.id}`));
       }
 
       createNotification(`Removed from network: ${deviceToDelete.name}`);
@@ -361,9 +343,9 @@ export default function DashboardPage() {
 
   const handleAddGroup = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !db || !newGroupName.trim()) return;
-    const groupsRef = collection(db, "users", user.uid, "buddyGroups");
-    addDoc(groupsRef, {
+    if (!user || !rtdb || !newGroupName.trim()) return;
+    const groupRef = push(ref(rtdb, `users/${user.uid}/buddyGroups`));
+    set(groupRef, {
       name: newGroupName.trim(),
       createdAt: serverTimestamp()
     }).then(() => {
@@ -373,9 +355,8 @@ export default function DashboardPage() {
   };
 
   const handleDeleteGroup = (groupId: string, groupName: string) => {
-    if (!user || !db) return;
-    const groupRef = doc(db, "users", user.uid, "buddyGroups", groupId);
-    deleteDoc(groupRef).then(() => {
+    if (!user || !rtdb) return;
+    remove(ref(rtdb, `users/${user.uid}/buddyGroups/${groupId}`)).then(() => {
       toast({ title: "Group Removed", description: `Deleted group protocol: ${groupName}` });
     });
   };
@@ -397,7 +378,7 @@ export default function DashboardPage() {
   };
 
   const triggerNodeAlert = (node: any) => {
-    if (!user || !db || !devices) return;
+    if (!user || !rtdb || !devices) return;
     
     const nodeAlertGroups = node.alertGroups || [];
     const groupsText = nodeAlertGroups.length > 0 ? nodeAlertGroups.join(", ") : "None assigned";
@@ -423,14 +404,14 @@ export default function DashboardPage() {
 
   const handleUpdateLocation = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !db) return;
+    if (!user || !rtdb) return;
     setUpdatingLocation(true);
-    const userRef = doc(db, "users", user.uid);
-    setDoc(userRef, {
+    set(ref(rtdb, `users/${user.uid}/profile`), {
+      ...profileData,
       latitude: parseFloat(locationData.lat),
       longitude: parseFloat(locationData.lng),
       updatedAt: serverTimestamp()
-    }, { merge: true })
+    })
       .then(() => {
         createNotification("Safety coordinates updated.");
         toast({ title: "Coordinates Locked", description: "Emergency beacon location updated." });
@@ -654,7 +635,7 @@ export default function DashboardPage() {
                           <div key={notif.id} className="p-4 border-l-2 border-primary bg-muted/10">
                             <p className="text-[10px] font-bold uppercase mb-1">{notif.message}</p>
                             <p className="text-[9px] text-muted-foreground font-mono">
-                              {notif.createdAt?.toDate?.() ? notif.createdAt.toDate().toLocaleTimeString() : "SYNCING..."}
+                              {notif.createdAt ? new Date(notif.createdAt).toLocaleTimeString() : "SYNCING..."}
                             </p>
                           </div>
                         ))}
@@ -697,7 +678,7 @@ export default function DashboardPage() {
                           <div className="flex flex-col gap-0.5 mt-1">
                             <p className="text-[10px] text-muted-foreground uppercase font-bold">Role: {device.role || 'Emergency Contact'}</p>
                             <p className="text-[10px] text-muted-foreground uppercase font-bold flex items-center gap-1">
-                              Priority: <Star className="Star h-2 w-2 fill-primary text-primary" /> {device.priority || 'High'}
+                              Priority: <Star className="h-2 w-2 fill-primary text-primary" /> {device.priority || 'High'}
                             </p>
                           </div>
                           <p className="text-[9px] text-muted-foreground font-mono mt-2">{device.group} | {device.phoneNumber}</p>
@@ -883,14 +864,14 @@ export default function DashboardPage() {
 
           {activeTab === 'notifications' && (
             <div className="space-y-4">
-              {!notifications || notifications.length === 0 ? (
+              {notifications.length === 0 ? (
                 <p className="text-center py-20 text-muted-foreground uppercase text-xs font-bold tracking-widest">No active system alerts</p>
               ) : (
                 notifications.map((notif: any) => (
                   <div key={notif.id} className="p-4 border-b border-dashed flex justify-between items-center hover:bg-muted/10">
                     <div>
                       <p className="text-sm font-bold uppercase tracking-tight">{notif.message}</p>
-                      <p className="text-[10px] text-muted-foreground font-mono">{notif.createdAt?.toDate?.() ? notif.createdAt.toDate().toLocaleString() : "Syncing..."}</p>
+                      <p className="text-[10px] text-muted-foreground font-mono">{notif.createdAt ? new Date(notif.createdAt).toLocaleString() : "Syncing..."}</p>
                     </div>
                   </div>
                 ))
@@ -1010,14 +991,14 @@ export default function DashboardPage() {
             </form>
             <div className="space-y-2">
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Active Custom Groups</p>
-              {!customGroups || customGroups.length === 0 ? (
+              {!customGroupsData || Object.keys(customGroupsData).length === 0 ? (
                 <p className="text-[10px] text-muted-foreground uppercase">No custom groups defined.</p>
               ) : (
                 <div className="grid grid-cols-1 gap-2">
-                  {customGroups.map((group: any) => (
-                    <div key={group.id} className="flex items-center justify-between p-3 bg-muted/30 border border-dashed">
+                  {Object.entries(customGroupsData).map(([id, group]: [string, any]) => (
+                    <div key={id} className="flex items-center justify-between p-3 bg-muted/30 border border-dashed">
                       <span className="text-[10px] font-bold uppercase">{group.name}</span>
-                      <Button variant="ghost" size="icon" onClick={() => handleDeleteGroup(group.id, group.name)} className="h-6 w-6 text-destructive">
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteGroup(id, group.name)} className="h-6 w-6 text-destructive">
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
@@ -1290,7 +1271,6 @@ export default function DashboardPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Deletion Confirmation */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent className="rounded-none border-none">
           <AlertDialogHeader>
