@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useUser, useDatabase, useRtdb, useFirebase } from "@/firebase";
@@ -83,7 +84,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 type TabType = 'overview' | 'manage-buddy' | 'manage-node' | 'location' | 'notifications' | 'settings';
 
-const DEFAULT_BUDDY_GROUPS = ["Family", "Friend", "Close Friend", "Segurulo", "Others"];
+const DEFAULT_BUDDY_GROUPS = ["Family", "Friend", "Close Friend"];
 
 export default function DashboardPage() {
   const { user, loading: userLoading } = useUser();
@@ -262,7 +263,7 @@ export default function DashboardPage() {
         group: formData.group,
         role: formData.role,
         priority: formData.priority,
-        specialData: formData.group === 'Others' ? formData.specialData : ''
+        specialData: formData.specialData
       } : {
         type: formData.type,
         alertGroups: formData.alertGroups,
@@ -958,12 +959,6 @@ export default function DashboardPage() {
                 </Select>
                 <p className="text-[8px] text-muted-foreground uppercase">Nodes targeting this group will automatically alert this buddy.</p>
               </div>
-              {formData.group === 'Others' && (
-                <div className="space-y-2">
-                  <Label className="text-[10px] uppercase font-bold tracking-widest">Specific Group Details</Label>
-                  <Textarea placeholder="Define specific emergency role or group metadata..." className="rounded-none min-h-[80px]" value={formData.specialData} onChange={(e) => setFormData({...formData, specialData: e.target.value})} />
-                </div>
-              )}
               <Button type="submit" className="w-full rounded-none h-14 uppercase font-bold tracking-widest" disabled={registerLoading}>
                 {registerLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Save & Authorize Buddy"}
               </Button>
