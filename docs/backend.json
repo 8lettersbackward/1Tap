@@ -18,8 +18,8 @@
         "group": { "type": "string", "enum": ["Family", "Friend", "Close Friend", "Segurulo", "Others"], "description": "The safety group classification for buddies." },
         "alertGroups": { "type": "array", "items": { "type": "string" }, "description": "The buddy groups alerted by this node." },
         "specialData": { "type": "string", "description": "Additional custom data for 'Others' group or specific safety info." },
-        "registeredAt": { "type": "string", "format": "date-time" },
-        "lastActiveAt": { "type": "string", "format": "date-time" }
+        "registeredAt": { "type": "number" },
+        "lastActiveAt": { "type": "number" }
       },
       "required": ["name", "ownerId", "status", "category"]
     },
@@ -32,7 +32,7 @@
         "userId": { "type": "string" },
         "message": { "type": "string" },
         "read": { "type": "boolean" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "createdAt": { "type": "number" }
       },
       "required": ["userId", "message", "read"]
     },
@@ -59,7 +59,7 @@
         "uid": { "type": "string" },
         "buddyId": { "type": "string" },
         "processed": { "type": "boolean" },
-        "timestamp": { "type": "string", "format": "date-time" }
+        "timestamp": { "type": "number" }
       }
     }
   },
@@ -67,21 +67,21 @@
     "providers": ["email"]
   },
   "firestore": {
-    "/users/{userId}": {
+    "users/{userId}/profile": {
       "schema": "UserProfile",
-      "description": "Emergency responder contact info."
+      "description": "Emergency responder contact info in Realtime Database."
     },
-    "/users/{userId}/devices/{deviceId}": {
+    "users/{userId}/devices/{deviceId}": {
       "schema": "Device",
-      "description": "Safety devices or buddies registered to a user."
+      "description": "Safety devices or buddies registered to a user in Realtime Database."
     },
-    "/users/{userId}/notifications/{notificationId}": {
+    "users/{userId}/notifications/{notificationId}": {
       "schema": "Notification",
-      "description": "Personal safety alert history."
+      "description": "Personal safety alert history in Realtime Database."
     },
-    "/esp_queue/{queueId}": {
+    "esp_queue/{userId}/{buddyId}": {
       "schema": "ESPQueueEntry",
-      "description": "Queue for hardware device synchronization."
+      "description": "Queue for hardware device synchronization in Realtime Database."
     }
   }
 }
