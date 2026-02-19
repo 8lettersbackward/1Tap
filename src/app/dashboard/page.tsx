@@ -41,44 +41,36 @@ import {
   Bell, 
   Cpu, 
   Activity,
-  ChevronRight,
   ShieldCheck,
   Smartphone,
   Loader2,
   Trash2,
   Info,
   Edit,
-  Eye,
   LogOut,
   Moon,
   Sun,
-  Mail,
-  Search,
   LayoutDashboard,
   History,
   PieChart as PieChartIcon,
   ShieldAlert,
-  PlusCircle,
   PlusSquare,
-  Phone,
   Users,
   UserPlus,
   Radio,
   Layers,
   MapPin,
-  LocateFixed,
   Map as MapIcon,
   Navigation,
   Star,
   Zap,
-  ScrollText
+  Pulse
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ref, set, push, remove, serverTimestamp, child } from "firebase/database";
+import { ref, set, push, remove, serverTimestamp } from "firebase/database";
 import { signOut } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { PieChart, Pie, Cell, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -133,12 +125,18 @@ export default function DashboardPage() {
     setTheme(isDark ? 'dark' : 'light');
   }, [user, userLoading, router]);
 
-  // Profiles and Groups in RTDB
+  // Realtime Database Subscriptions using useRtdb (implements onValue pattern)
   const profileRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/profile`) : null, [rtdb, user]);
   const { data: profileData } = useRtdb(profileRef);
 
   const groupsRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/buddyGroups`) : null, [rtdb, user]);
   const { data: customGroupsData } = useRtdb(groupsRef);
+
+  const devicesRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/devices`) : null, [rtdb, user]);
+  const { data: devicesData, loading: devicesLoading } = useRtdb(devicesRef);
+
+  const notificationsRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/notifications`) : null, [rtdb, user]);
+  const { data: notificationsData } = useRtdb(notificationsRef);
 
   useEffect(() => {
     if (profileData) {
@@ -168,16 +166,10 @@ export default function DashboardPage() {
     signOut(auth).then(() => router.push("/login"));
   };
 
-  const devicesRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/devices`) : null, [rtdb, user]);
-  const { data: devicesData, loading: devicesLoading } = useRtdb(devicesRef);
-
   const devices = useMemo(() => {
     if (!devicesData) return [];
     return Object.entries(devicesData).map(([id, val]: [string, any]) => ({ ...val, id }));
   }, [devicesData]);
-
-  const notificationsRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/notifications`) : null, [rtdb, user]);
-  const { data: notificationsData } = useRtdb(notificationsRef);
 
   const notifications = useMemo(() => {
     if (!notificationsData) return [];
@@ -217,10 +209,7 @@ export default function DashboardPage() {
         d.type?.toLowerCase().includes(lowerQuery) ||
         d.status?.toLowerCase().includes(lowerQuery) ||
         d.phoneNumber?.toLowerCase().includes(lowerQuery) ||
-        d.group?.toLowerCase().includes(lowerQuery) ||
-        d.category?.toLowerCase().includes(lowerQuery) ||
-        d.specialData?.toLowerCase().includes(lowerQuery) ||
-        (d.alertGroups && d.alertGroups.some((g: string) => g.toLowerCase().includes(lowerQuery)))
+        d.group?.toLowerCase().includes(lowerQuery)
       );
     }
     if (activeTab === 'manage-buddy') {
@@ -276,7 +265,7 @@ export default function DashboardPage() {
         const label = category === 'buddy' ? 'Buddy' : 'Node';
         createNotification(`New ${label} registered: ${formData.name}`);
         
-        // MIRROR TO ESP QUEUE
+        // MIRROR TO ESP QUEUE for hardware synchronization
         if (category === 'buddy') {
           set(ref(rtdb, `esp_queue/${user.uid}/${finalId}`), {
             name: formData.name,
@@ -286,7 +275,7 @@ export default function DashboardPage() {
             buddyId: finalId,
             processed: false,
             timestamp: serverTimestamp()
-          }).catch(err => console.warn("ESP Mirroring failed", err));
+          });
         }
 
         setFormData({ name: '', deviceId: '', type: 'SOS Beacon', status: 'online', phoneNumber: '', group: 'Friend', role: 'Primary Emergency Contact', priority: 'High', alertGroups: [], specialData: '' });
@@ -309,6 +298,7 @@ export default function DashboardPage() {
       .then(() => {
         createNotification(`Updated registry for: ${editingDevice.name}`);
         
+        // Mirror update to ESP Queue
         if (editingDevice.category === 'buddy') {
           set(ref(rtdb, `esp_queue/${user.uid}/${editingDevice.id}`), {
             name: editingDevice.name,
@@ -327,39 +317,34 @@ export default function DashboardPage() {
       });
   };
 
-  const confirmDeleteDevice = () => {
-    if (!user || !rtdb || !deviceToDelete) return;
+  const triggerNodeAlert = (node: any) => {
+    if (!user || !rtdb || !devices) return;
     
-    remove(ref(rtdb, `users/${user.uid}/devices/${deviceToDelete.id}`)).then(() => {
-      if (deviceToDelete.category === 'buddy') {
-        remove(ref(rtdb, `esp_queue/${user.uid}/${deviceToDelete.id}`));
-      }
+    const nodeAlertGroups = node.alertGroups || [];
+    const groupsText = nodeAlertGroups.length > 0 ? nodeAlertGroups.join(", ") : "None assigned";
+    const targetBuddies = devices.filter(d => d.category === 'buddy' && nodeAlertGroups.includes(d.group));
 
-      createNotification(`Removed from network: ${deviceToDelete.name}`);
-      toast({ title: "Asset Purged", description: "Removed from your security profile." });
-      setIsDeleteDialogOpen(false);
-      setDeviceToDelete(null);
-    });
+    if (targetBuddies.length > 0) {
+      targetBuddies.forEach(buddy => {
+        createNotification(`SOS TRIGGERED: Node ${node.name} Alerting Groups: [${groupsText}]. Contacting ${buddy.name}...`);
+      });
+      toast({ 
+        title: "SOS Signal Dispatched", 
+        description: `Alerts sent to groups: ${groupsText}. ${targetBuddies.length} buddies notified.` 
+      });
+    } else {
+      createNotification(`SOS WARNING: Node ${node.name} triggered for groups: ${groupsText}, but NO CONTACTS assigned.`);
+      toast({ 
+        variant: "destructive", 
+        title: "Orchestration Failed", 
+        description: `No buddies found in the assigned groups: ${groupsText}.` 
+      });
+    }
   };
 
-  const handleAddGroup = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !rtdb || !newGroupName.trim()) return;
-    const groupRef = push(ref(rtdb, `users/${user.uid}/buddyGroups`));
-    set(groupRef, {
-      name: newGroupName.trim(),
-      createdAt: serverTimestamp()
-    }).then(() => {
-      setNewGroupName("");
-      toast({ title: "Group Protocol Created", description: `Added "${newGroupName}" to custom groups.` });
-    });
-  };
-
-  const handleDeleteGroup = (groupId: string, groupName: string) => {
-    if (!user || !rtdb) return;
-    remove(ref(rtdb, `users/${user.uid}/buddyGroups/${groupId}`)).then(() => {
-      toast({ title: "Group Removed", description: `Deleted group protocol: ${groupName}` });
-    });
+  const getBuddiesInGroup = (group: string) => {
+    if (!devices) return [];
+    return devices.filter(d => d.category === 'buddy' && d.group === group);
   };
 
   const toggleAlertGroup = (group: string, isEditing: boolean = false) => {
@@ -378,59 +363,9 @@ export default function DashboardPage() {
     }
   };
 
-  const triggerNodeAlert = (node: any) => {
-    if (!user || !rtdb || !devices) return;
-    
-    const nodeAlertGroups = node.alertGroups || [];
-    const groupsText = nodeAlertGroups.length > 0 ? nodeAlertGroups.join(", ") : "None assigned";
-    const targetBuddies = devices.filter(d => d.category === 'buddy' && nodeAlertGroups.includes(d.group));
-
-    if (targetBuddies.length > 0) {
-      targetBuddies.forEach(buddy => {
-        createNotification(`ALERT: SOS from Node ${node.name} (Target Groups: ${groupsText}). Contact ${buddy.name} notified.`);
-      });
-      toast({ 
-        title: "SOS Triggered", 
-        description: `Alerts dispatched for groups: ${groupsText}. Total contacts reached: ${targetBuddies.length}.` 
-      });
-    } else {
-      createNotification(`WARNING: SOS from Node ${node.name} triggered for groups: ${groupsText}, but NO CONTACTS found.`);
-      toast({ 
-        variant: "destructive", 
-        title: "Orchestration Warning", 
-        description: `No buddies found in the assigned groups: ${groupsText}. Check your registry.` 
-      });
-    }
-  };
-
-  const handleUpdateLocation = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !rtdb) return;
-    setUpdatingLocation(true);
-    set(ref(rtdb, `users/${user.uid}/profile`), {
-      ...profileData,
-      latitude: parseFloat(locationData.lat),
-      longitude: parseFloat(locationData.lng),
-      updatedAt: serverTimestamp()
-    })
-      .then(() => {
-        createNotification("Safety coordinates updated.");
-        toast({ title: "Coordinates Locked", description: "Emergency beacon location updated." });
-      })
-      .catch((err) => {
-        toast({ variant: "destructive", title: "Update Error", description: err.message });
-      })
-      .finally(() => setUpdatingLocation(false));
-  };
-
   const getLinkedBuddies = (alertGroups: string[]) => {
     if (!devices || !alertGroups) return [];
     return devices.filter(d => d.category === 'buddy' && alertGroups.includes(d.group));
-  };
-
-  const getBuddiesInGroup = (group: string) => {
-    if (!devices) return [];
-    return devices.filter(d => d.category === 'buddy' && d.group === group);
   };
 
   if (userLoading) return (
@@ -504,7 +439,7 @@ export default function DashboardPage() {
                 {navItems.find(t => t.id === activeTab)?.label}
               </h1>
               <p className="text-muted-foreground text-sm tracking-wide">
-                {activeTab === 'overview' && `Protection status for ${currentName}. Active heartbeat and alerts.`}
+                {activeTab === 'overview' && `System heartbeat for ${currentName}. Active orchestration and alert monitoring.`}
                 {activeTab === 'manage-buddy' && "Manage your trusted emergency contacts and human safety network."}
                 {activeTab === 'manage-node' && "Registry of your active hardware safety nodes and sensors."}
                 {activeTab === 'location' && "Configure specific GPS coordinates for your safety beacon."}
@@ -556,31 +491,6 @@ export default function DashboardPage() {
                         <h3 className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
                           <ShieldAlert className="h-4 w-4" /> Comprehensive Network Registry
                         </h3>
-                        
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-6 w-6">
-                              <Info className="h-4 w-4 text-muted-foreground" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-48 p-4 rounded-none border-none bg-background shadow-xl">
-                             <p className="text-[9px] font-bold uppercase tracking-[0.2em] mb-3 text-muted-foreground">Status Legend</p>
-                             <div className="space-y-2">
-                               <div className="flex items-center gap-3">
-                                 <div className="h-2 w-2 bg-primary rounded-full" />
-                                 <span className="text-[10px] font-bold uppercase">Online</span>
-                               </div>
-                               <div className="flex items-center gap-3">
-                                 <div className="h-2 w-2 bg-muted-foreground rounded-full" />
-                                 <span className="text-[10px] font-bold uppercase">Idle</span>
-                               </div>
-                               <div className="flex items-center gap-3">
-                                 <div className="h-2 w-2 bg-destructive rounded-full" />
-                                 <span className="text-[10px] font-bold uppercase">In Alert Mode</span>
-                               </div>
-                             </div>
-                          </PopoverContent>
-                        </Popover>
                       </div>
                       
                       <div className="grid grid-cols-1 gap-4">
@@ -668,7 +578,6 @@ export default function DashboardPage() {
                   <div className="col-span-full py-20 border-2 border-dashed flex flex-col items-center justify-center text-center px-4">
                     <Smartphone className="h-12 w-12 text-muted-foreground mb-4 opacity-20" />
                     <p className="text-lg font-bold uppercase mb-2">No Buddies Enlisted</p>
-                    <p className="text-sm text-muted-foreground mb-6">Your human safety network is currently unmonitored.</p>
                   </div>
                 ) : (
                   filteredDevices.map((device: any) => (
@@ -687,12 +596,6 @@ export default function DashboardPage() {
                         <Users className="h-4 w-4 text-primary" />
                       </CardHeader>
                       <CardContent>
-                        <div className="flex items-center gap-2 mb-4">
-                          <div className={cn("h-2 w-2 rounded-full", device.status === 'online' ? 'bg-primary animate-pulse' : 'bg-muted-foreground')} />
-                          <span className="text-[10px] font-bold uppercase tracking-wider">
-                            {device.status === 'online' ? 'Online' : 'Idle'} · Last active 2 mins ago
-                          </span>
-                        </div>
                         <div className="flex gap-2">
                            <Button variant="outline" size="sm" className="rounded-none text-[9px] uppercase font-bold" onClick={() => { setViewingDevice(device); setIsViewDialogOpen(true); }}>View</Button>
                            <Button variant="outline" size="sm" className="rounded-none text-[9px] uppercase font-bold" onClick={() => { setEditingDevice({...device}); setIsEditDialogOpen(true); }}>Edit</Button>
@@ -731,7 +634,6 @@ export default function DashboardPage() {
                   <div className="col-span-full py-20 border-2 border-dashed flex flex-col items-center justify-center text-center px-4">
                     <Cpu className="h-12 w-12 text-muted-foreground mb-4 opacity-20" />
                     <p className="text-lg font-bold uppercase mb-2">No Nodes Registered</p>
-                    <p className="text-sm text-muted-foreground mb-6">No hardware safety nodes currently active.</p>
                   </div>
                 ) : (
                   filteredDevices.map((device: any) => (
@@ -779,7 +681,6 @@ export default function DashboardPage() {
                     <CardTitle className="text-[10px] uppercase font-bold tracking-widest flex items-center gap-2">
                       <Navigation className="h-4 w-4" /> Safety Coordinates
                     </CardTitle>
-                    <CardDescription className="text-[10px] uppercase">Define your primary emergency beacon location.</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={handleUpdateLocation} className="space-y-6">
@@ -820,45 +721,16 @@ export default function DashboardPage() {
                   </h3>
                   <div className="aspect-video bg-muted/10 border-2 border-dashed relative overflow-hidden flex items-center justify-center group">
                     <div className="absolute inset-0 opacity-10 bg-[url('https://picsum.photos/seed/location-map/800/600')] bg-cover grayscale" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
-                    <div className="absolute inset-0 pointer-events-none opacity-20" style={{ backgroundImage: 'radial-gradient(circle, var(--primary) 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
-
-                    <div className="relative z-10 flex flex-col items-center">
-                      <div className="relative mb-4">
-                        <MapPin className="h-10 w-10 text-primary animate-bounce" />
-                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-2 w-6 bg-primary/20 blur-md rounded-full" />
-                      </div>
-                      <div className="bg-background/90 backdrop-blur-sm border p-4 text-center min-w-[200px] shadow-xl">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary mb-1">Live Beacon Active</p>
-                        <div className="h-1 w-full bg-muted mb-3 overflow-hidden">
-                          <div className="h-full bg-primary w-1/3 animate-[shimmer_2s_infinite]" style={{ backgroundImage: 'linear-gradient(to right, transparent, white, transparent)' }} />
-                        </div>
-                        <p className="text-[10px] font-mono font-bold">LAT: {locationData.lat || 'PENDING'}</p>
-                        <p className="text-[10px] font-mono font-bold">LNG: {locationData.lng || 'PENDING'}</p>
-                      </div>
-                    </div>
-
-                    <div className="absolute top-4 right-4 flex flex-col gap-2 items-end">
-                       <div className="h-2 w-2 bg-primary animate-ping" />
-                       <p className="text-xs font-bold uppercase tracking-widest opacity-50">Signal Synchronized</p>
+                    <div className="relative z-10 flex flex-col items-center text-center">
+                       <MapPin className="h-10 w-10 text-primary animate-bounce mb-4" />
+                       <div className="bg-background/90 backdrop-blur-sm border p-4 shadow-xl">
+                          <p className="text-[10px] font-bold uppercase text-primary mb-2">Live Beacon Active</p>
+                          <p className="text-[10px] font-mono font-bold">LAT: {locationData.lat || 'PENDING'}</p>
+                          <p className="text-[10px] font-mono font-bold">LNG: {locationData.lng || 'PENDING'}</p>
+                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-
-              <div className="p-8 border-l-2 border-primary bg-muted/10 space-y-4">
-                <div className="flex items-center gap-3">
-                  <Info className="h-4 w-4 text-primary" />
-                  <p className="text-[10px] font-bold uppercase tracking-widest">Emergency Orchestration Protocol</p>
-                </div>
-                <p className="text-[11px] leading-relaxed uppercase opacity-70 max-w-2xl">
-                  Your coordinates represent the primary rendezvous point for all safety nodes. In the event of an orchestration trigger, these precise hashes are transmitted via the encrypted channel to your enlisted "Buddy" network.
-                </p>
-                {profileData?.latitude && profileData?.longitude && (
-                   <div className="mt-4 pt-4 border-t border-dashed">
-                      <p className="text-[10px] font-bold uppercase text-primary">Master Registry Locked: {profileData.latitude}, {profileData.longitude}</p>
-                   </div>
-                )}
               </div>
             </div>
           )}
@@ -888,7 +760,6 @@ export default function DashboardPage() {
                   <CardContent className="p-6 flex items-center justify-between">
                     <div>
                       <p className="text-sm font-bold uppercase">Night Vision Protocol</p>
-                      <p className="text-[10px] text-muted-foreground uppercase">Toggle Dark Mode for low-light emergencies</p>
                     </div>
                     <div className="flex items-center gap-3">
                       {theme === 'light' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -899,7 +770,6 @@ export default function DashboardPage() {
               </section>
 
               <section className="space-y-4">
-                <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">System Integrity</h3>
                 <Button variant="destructive" onClick={handleLogout} className="w-full h-14 rounded-none uppercase font-bold tracking-[0.2em] flex items-center justify-center gap-3">
                   <LogOut className="h-4 w-4" /> Terminate Safety Session
                 </Button>
@@ -914,7 +784,6 @@ export default function DashboardPage() {
         <DialogContent className="rounded-none border-none max-w-md">
           <DialogHeader>
             <DialogTitle className="uppercase font-bold">Enlist New Buddy</DialogTitle>
-            <DialogDescription className="text-xs">Provide credentials for your emergency orchestration contact.</DialogDescription>
           </DialogHeader>
           <div className="pt-6">
             <form onSubmit={(e) => handleRegisterDevice(e, 'buddy')} className="space-y-6">
@@ -957,7 +826,6 @@ export default function DashboardPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-[8px] text-muted-foreground uppercase">Nodes targeting this group will automatically alert this buddy.</p>
               </div>
               <Button type="submit" className="w-full rounded-none h-14 uppercase font-bold tracking-widest" disabled={registerLoading}>
                 {registerLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Save & Authorize Buddy"}
@@ -967,57 +835,10 @@ export default function DashboardPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isManageGroupsDialogOpen} onOpenChange={setIsManageGroupsDialogOpen}>
-        <DialogContent className="rounded-none border-none max-w-md">
-          <DialogHeader>
-            <DialogTitle className="uppercase font-bold">Manage Buddy Groups</DialogTitle>
-            <DialogDescription className="text-xs">Define custom safety protocols and human categories.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-6 pt-4">
-            <form onSubmit={handleAddGroup} className="flex gap-2">
-              <Input 
-                placeholder="New Group Name (e.g. Work)" 
-                className="rounded-none uppercase text-[10px] font-bold tracking-widest"
-                value={newGroupName}
-                onChange={(e) => setNewGroupName(e.target.value)}
-                required
-              />
-              <Button type="submit" size="icon" className="rounded-none shrink-0"><Plus className="h-4 w-4" /></Button>
-            </form>
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Active Custom Groups</p>
-              {!customGroupsData || Object.keys(customGroupsData).length === 0 ? (
-                <p className="text-[10px] text-muted-foreground uppercase">No custom groups defined.</p>
-              ) : (
-                <div className="grid grid-cols-1 gap-2">
-                  {Object.entries(customGroupsData).map(([id, group]: [string, any]) => (
-                    <div key={id} className="flex items-center justify-between p-3 bg-muted/30 border border-dashed">
-                      <span className="text-[10px] font-bold uppercase">{group.name}</span>
-                      <Button variant="ghost" size="icon" onClick={() => handleDeleteGroup(id, group.name)} className="h-6 w-6 text-destructive">
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="mt-6 pt-4 border-t border-dashed">
-                <p className="text-[8px] text-muted-foreground uppercase mb-2">Default Protocols (Protected)</p>
-                <div className="flex flex-wrap gap-1">
-                  {DEFAULT_BUDDY_GROUPS.map(g => (
-                    <span key={g} className="text-[8px] bg-muted px-2 py-0.5 font-bold uppercase opacity-50">{g}</span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={isAddNodeDialogOpen} onOpenChange={setIsAddNodeDialogOpen}>
         <DialogContent className="rounded-none border-none max-w-md">
           <DialogHeader>
             <DialogTitle className="uppercase font-bold">Arm New Node</DialogTitle>
-            <DialogDescription className="text-xs">Provide identifiers for your emergency hardware asset.</DialogDescription>
           </DialogHeader>
           <form onSubmit={(e) => handleRegisterDevice(e, 'node')} className="space-y-6 pt-4">
             <ScrollArea className="max-h-[60vh] pr-4">
@@ -1059,8 +880,7 @@ export default function DashboardPage() {
                       );
                     })}
                   </div>
-                  
-                  {/* Linked Buddies Preview */}
+
                   <div className="space-y-2">
                     <p className="text-[8px] text-muted-foreground uppercase font-bold">Auto-Linked Recipients ({getLinkedBuddies(formData.alertGroups).length})</p>
                     <div className="flex flex-wrap gap-1">
@@ -1077,7 +897,7 @@ export default function DashboardPage() {
 
                 <div className="space-y-2">
                   <Label className="text-[10px] uppercase font-bold tracking-widest">Technical Data</Label>
-                  <Textarea placeholder="Provide specific safety details for this node..." className="rounded-none min-h-[100px]" value={formData.specialData} onChange={(e) => setFormData({...formData, specialData: e.target.value})} />
+                  <Textarea placeholder="Specific node safety details..." className="rounded-none min-h-[100px]" value={formData.specialData} onChange={(e) => setFormData({...formData, specialData: e.target.value})} />
                 </div>
               </div>
             </ScrollArea>
@@ -1107,35 +927,16 @@ export default function DashboardPage() {
                         <Label className="text-[10px] uppercase font-bold">Phone Number</Label>
                         <Input className="rounded-none" value={editingDevice.phoneNumber} onChange={(e) => setEditingDevice({...editingDevice, phoneNumber: e.target.value})} required />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-[10px] uppercase font-bold">Role</Label>
-                          <Input className="rounded-none" value={editingDevice.role} onChange={(e) => setEditingDevice({...editingDevice, role: e.target.value})} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-[10px] uppercase font-bold">Priority</Label>
-                          <Select value={editingDevice.priority} onValueChange={(v) => setEditingDevice({...editingDevice, priority: v})}>
-                            <SelectTrigger className="rounded-none">
-                              <SelectValue placeholder="Priority" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Low">Low</SelectItem>
-                              <SelectItem value="Medium">Medium</SelectItem>
-                              <SelectItem value="High">High</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
                       <div className="space-y-2">
-                        <Label className="text-[10px] uppercase font-bold">Contact Group</Label>
-                        <Select value={editingDevice.group} onValueChange={(v) => setEditingDevice({...editingDevice, group: v})}>
+                        <Label className="text-[10px] uppercase font-bold">Priority</Label>
+                        <Select value={editingDevice.priority} onValueChange={(v) => setEditingDevice({...editingDevice, priority: v})}>
                           <SelectTrigger className="rounded-none">
-                            <SelectValue placeholder="Group" />
+                            <SelectValue placeholder="Priority" />
                           </SelectTrigger>
                           <SelectContent>
-                            {buddyGroups.map(g => (
-                              <SelectItem key={g} value={g}>{g}</SelectItem>
-                            ))}
+                            <SelectItem value="Low">Low</SelectItem>
+                            <SelectItem value="Medium">Medium</SelectItem>
+                            <SelectItem value="High">High</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -1156,11 +957,11 @@ export default function DashboardPage() {
                                   checked={(editingDevice.alertGroups || []).includes(group)}
                                   onCheckedChange={() => toggleAlertGroup(group, true)}
                                 />
-                                <Label htmlFor={`edit-group-${group}`} className="text-[10px] uppercase font-bold cursor-pointer flex flex-wrap items-center gap-2">
+                                <Label htmlFor={`edit-group-${group}`} className="text-[10px] uppercase font-bold cursor-pointer flex items-center gap-2">
                                   {group}
                                   {groupBuddies.length > 0 && (
                                     <span className="text-[8px] font-mono text-muted-foreground normal-case bg-muted px-1.5 py-0.5">
-                                      Includes: {groupBuddies.map(b => b.name).join(', ')}
+                                      ({groupBuddies.map(b => b.name).join(', ')})
                                     </span>
                                   )}
                                 </Label>
@@ -1168,19 +969,6 @@ export default function DashboardPage() {
                             </div>
                           );
                         })}
-                      </div>
-
-                      <div className="space-y-2">
-                        <p className="text-[8px] text-muted-foreground uppercase font-bold">Auto-Linked Recipients ({getLinkedBuddies(editingDevice.alertGroups).length})</p>
-                        <div className="flex flex-wrap gap-1">
-                          {getLinkedBuddies(editingDevice.alertGroups).length > 0 ? (
-                            getLinkedBuddies(editingDevice.alertGroups).map(b => (
-                              <span key={b.id} className="text-[8px] bg-primary/10 text-primary px-2 py-0.5 border border-primary/20 font-bold uppercase">{b.name}</span>
-                            ))
-                          ) : (
-                            <span className="text-[8px] text-muted-foreground italic">No buddies currently linked to these groups.</span>
-                          )}
-                        </div>
                       </div>
                     </div>
                   )}
@@ -1208,55 +996,14 @@ export default function DashboardPage() {
                   <p className="text-[8px] uppercase font-bold text-muted-foreground">Unique Hash ID</p>
                   <p className="text-xs font-mono">{viewingDevice.id}</p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-[8px] uppercase font-bold text-muted-foreground">Classification</p>
-                  <p className="text-xs uppercase">{viewingDevice.category}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-[8px] uppercase font-bold text-muted-foreground">Protocol Type</p>
-                  <p className="text-xs uppercase">{viewingDevice.type || viewingDevice.group || "N/A"}</p>
-                </div>
-                {viewingDevice.category === 'buddy' && (
-                  <>
-                    <div className="space-y-1">
-                      <p className="text-[8px] uppercase font-bold text-muted-foreground">Safety Role</p>
-                      <p className="text-xs uppercase">{viewingDevice.role || 'Primary Contact'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[8px] uppercase font-bold text-muted-foreground">Alert Priority</p>
-                      <p className="text-xs uppercase">{viewingDevice.priority || 'High'}</p>
-                    </div>
-                  </>
-                )}
-                {viewingDevice.category === 'node' && viewingDevice.alertGroups && viewingDevice.alertGroups.length > 0 && (
+                {viewingDevice.category === 'node' && viewingDevice.alertGroups && (
                   <div className="space-y-3 col-span-2 border-t border-dashed pt-4">
-                    <p className="text-[8px] uppercase font-bold text-muted-foreground">Alert Orchestration Targets</p>
+                    <p className="text-[8px] uppercase font-bold text-muted-foreground">Active Recipients ({getLinkedBuddies(viewingDevice.alertGroups).length})</p>
                     <div className="flex flex-wrap gap-1">
-                      {viewingDevice.alertGroups.map((g: string) => (
-                        <span key={g} className="text-[9px] bg-muted px-2 py-0.5 font-bold uppercase">{g}</span>
+                      {getLinkedBuddies(viewingDevice.alertGroups).map(b => (
+                        <span key={b.id} className="text-[9px] border border-primary text-primary px-2 py-0.5 font-bold uppercase">{b.name} ({b.phoneNumber})</span>
                       ))}
                     </div>
-                    
-                    <div className="space-y-1">
-                       <p className="text-[8px] uppercase font-bold text-primary">Active Recipients ({getLinkedBuddies(viewingDevice.alertGroups).length})</p>
-                       <div className="flex flex-wrap gap-1">
-                          {getLinkedBuddies(viewingDevice.alertGroups).map(b => (
-                            <span key={b.id} className="text-[9px] border border-primary text-primary px-2 py-0.5 font-bold uppercase">{b.name} ({b.phoneNumber})</span>
-                          ))}
-                       </div>
-                    </div>
-                  </div>
-                )}
-                {viewingDevice.phoneNumber && (
-                  <div className="space-y-1 col-span-2">
-                    <p className="text-[8px] uppercase font-bold text-muted-foreground">Contact Link</p>
-                    <p className="text-xs font-bold">{viewingDevice.phoneNumber}</p>
-                  </div>
-                )}
-                {viewingDevice.specialData && (
-                  <div className="space-y-1 col-span-2 p-4 bg-muted/30 border border-dashed">
-                    <p className="text-[8px] uppercase font-bold text-muted-foreground mb-1">Encrypted Payload Data</p>
-                    <p className="text-[10px] leading-relaxed">{viewingDevice.specialData}</p>
                   </div>
                 )}
               </div>
@@ -1271,12 +1018,21 @@ export default function DashboardPage() {
           <AlertDialogHeader>
             <AlertDialogTitle className="uppercase font-bold tracking-tight">Purge Security Asset?</AlertDialogTitle>
             <AlertDialogDescription className="text-xs uppercase leading-relaxed">
-              Removing this buddy will stop alerts and location sharing. This action is final and will truncate the safety orchestration protocol.
+              This action is final and will truncate the safety orchestration protocol.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-none uppercase text-[10px] font-bold">Abort</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteDevice} className="rounded-none uppercase text-[10px] font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={() => {
+              if (!user || !rtdb || !deviceToDelete) return;
+              remove(ref(rtdb, `users/${user.uid}/devices/${deviceToDelete.id}`)).then(() => {
+                if (deviceToDelete.category === 'buddy') remove(ref(rtdb, `esp_queue/${user.uid}/${deviceToDelete.id}`));
+                createNotification(`Removed from network: ${deviceToDelete.name}`);
+                setIsDeleteDialogOpen(false);
+                setDeviceToDelete(null);
+                toast({ title: "Asset Purged" });
+              });
+            }} className="rounded-none uppercase text-[10px] font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Confirm Purge
             </AlertDialogAction>
           </AlertDialogFooter>
