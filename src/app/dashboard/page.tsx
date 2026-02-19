@@ -155,9 +155,14 @@ export default function DashboardPage() {
     setResolvingLocation(true);
     try {
       const result = await reverseGeocode({ latitude: lat, longitude: lng });
-      setLocationName(result.locationName);
+      if (result.city && result.province && result.country) {
+        setLocationName(`${result.city}, ${result.province}, ${result.country}`);
+      } else {
+        setLocationName("Coordinates Locked (Location Pending)");
+      }
     } catch (err) {
       console.error("Geocoding error", err);
+      setLocationName("Error resolving location");
     } finally {
       setResolvingLocation(false);
     }

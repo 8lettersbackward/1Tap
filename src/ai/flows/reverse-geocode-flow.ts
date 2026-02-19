@@ -1,8 +1,8 @@
 'use server';
 /**
- * @fileOverview A geocoding AI agent.
+ * @fileOverview A geocoding AI agent for the Visual Beacon Tracker.
  *
- * - reverseGeocode - A function that converts coordinates to a readable location name.
+ * - reverseGeocode - A function that converts coordinates to a structured location object.
  * - GeocodeInput - The input type for the reverseGeocode function.
  * - GeocodeOutput - The return type for the reverseGeocode function.
  */
@@ -17,7 +17,9 @@ const GeocodeInputSchema = z.object({
 export type GeocodeInput = z.infer<typeof GeocodeInputSchema>;
 
 const GeocodeOutputSchema = z.object({
-  locationName: z.string().describe('The identified city, province, and country.'),
+  city: z.string().describe('The identified city or municipality.'),
+  province: z.string().describe('The identified province or state.'),
+  country: z.string().describe('The identified country.'),
 });
 export type GeocodeOutput = z.infer<typeof GeocodeOutputSchema>;
 
@@ -33,14 +35,19 @@ const reverseGeocodeFlow = ai.defineFlow(
   },
   async (input) => {
     const { output } = await ai.generate({
-      system: 'You are a precise geographical geocoding assistant. Your task is to convert latitude and longitude coordinates into a concise, readable location name in the format: City, Province/State, Country.',
-      prompt: `Identify the location for: Latitude ${input.latitude}, Longitude ${input.longitude}`,
+      system: 'You are a precise geographical geocoding assistant. Your task is to convert latitude and longitude coordinates into structured location data. Return the city/municipality, province/state, and country.',
+      prompt: `Identify the specific city, province, and country for these coordinates: Latitude ${input.latitude}, Longitude ${input.longitude}`,
+      output: { schema: GeocodeOutputSchema }
     });
 
     if (!output) {
-      return { locationName: "Coordinates Locked (Location Pending)" };
+      return { 
+        city: "Unknown City", 
+        province: "Unknown Province", 
+        country: "Unknown Country" 
+      };
     }
 
-    return { locationName: output.text || "Unknown Territory" };
+    return output;
   }
 );
