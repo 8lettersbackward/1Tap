@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useUser, useDatabase, useRtdb, useFirebase } from "@/firebase";
@@ -28,12 +29,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { 
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+} from "@/AlertDialog";
 import { 
   Plus, 
   Settings, 
@@ -64,7 +60,9 @@ import {
   Star,
   Zap,
   Search,
-  PlusCircle
+  PlusCircle,
+  CheckCircle2,
+  ListFilter
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ref, set, push, remove, serverTimestamp } from "firebase/database";
@@ -74,6 +72,7 @@ import { PieChart, Pie, Cell } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 
 type TabType = 'overview' | 'manage-buddy' | 'manage-node' | 'location' | 'notifications' | 'settings';
 
@@ -97,7 +96,7 @@ export default function DashboardPage() {
     type: 'SOS Beacon',
     status: 'online',
     phoneNumber: '',
-    group: 'Friend',
+    groups: [] as string[],
     role: 'Primary Emergency Contact',
     priority: 'High',
     alertGroups: [] as string[],
@@ -209,7 +208,7 @@ export default function DashboardPage() {
         d.type?.toLowerCase().includes(lowerQuery) ||
         d.status?.toLowerCase().includes(lowerQuery) ||
         d.phoneNumber?.toLowerCase().includes(lowerQuery) ||
-        d.group?.toLowerCase().includes(lowerQuery)
+        (d.groups && d.groups.some((g: string) => g.toLowerCase().includes(lowerQuery)))
       );
     }
     if (activeTab === 'manage-buddy') {
@@ -249,7 +248,7 @@ export default function DashboardPage() {
       lastActiveAt: Date.now(),
       ...(category === 'buddy' ? {
         phoneNumber: formData.phoneNumber,
-        group: formData.group,
+        groups: formData.groups,
         role: formData.role,
         priority: formData.priority,
         specialData: formData.specialData
@@ -272,12 +271,13 @@ export default function DashboardPage() {
             priority: formData.priority,
             uid: user.uid,
             buddyId: finalId,
+            groups: (formData.groups || []).join(', '),
             processed: false,
             timestamp: serverTimestamp()
           });
         }
 
-        setFormData({ name: '', deviceId: '', type: 'SOS Beacon', status: 'online', phoneNumber: '', group: 'Friend', role: 'Primary Emergency Contact', priority: 'High', alertGroups: [], specialData: '' });
+        setFormData({ name: '', deviceId: '', type: 'SOS Beacon', status: 'online', phoneNumber: '', groups: [], role: 'Primary Emergency Contact', priority: 'High', alertGroups: [], specialData: '' });
         setIsAddBuddyDialogOpen(false);
         setIsAddNodeDialogOpen(false);
         toast({ title: "Protocol Activated", description: `${label} successfully added to your network.` });
@@ -304,6 +304,7 @@ export default function DashboardPage() {
             priority: editingDevice.priority,
             uid: user.uid,
             buddyId: editingDevice.id,
+            groups: (editingDevice.groups || []).join(', '),
             processed: false,
             timestamp: serverTimestamp()
           });
@@ -357,12 +358,14 @@ export default function DashboardPage() {
     if (!user || !rtdb || !devices) return;
     
     const nodeAlertGroups = node.alertGroups || [];
-    const targetBuddies = devices.filter(d => d.category === 'buddy' && nodeAlertGroups.includes(d.group));
+    const targetBuddies = devices.filter(d => 
+      d.category === 'buddy' && 
+      d.groups && 
+      d.groups.some((g: string) => nodeAlertGroups.includes(g))
+    );
 
     if (targetBuddies.length > 0) {
-      targetBuddies.forEach(buddy => {
-        createNotification(`SOS TRIGGERED: Node ${node.name} Alerting Groups: [${nodeAlertGroups.join(", ")}]. Contacting ${buddy.name}...`);
-      });
+      createNotification(`SOS TRIGGERED: Node ${node.name} Alerting Groups: [${nodeAlertGroups.join(", ")}]. Contacting ${targetBuddies.map(b => b.name).join(", ")}...`);
       toast({ 
         title: "SOS Signal Dispatched", 
         description: `Alerts sent to groups: ${nodeAlertGroups.join(", ")}. ${targetBuddies.length} buddies notified.` 
@@ -379,7 +382,23 @@ export default function DashboardPage() {
 
   const getBuddiesInGroup = (group: string) => {
     if (!devices) return [];
-    return devices.filter(d => d.category === 'buddy' && d.group === group);
+    return devices.filter(d => d.category === 'buddy' && d.groups && d.groups.includes(group));
+  };
+
+  const toggleBuddyGroup = (group: string, isEditing: boolean = false) => {
+    if (isEditing) {
+      const current = editingDevice.groups || [];
+      const updated = current.includes(group) 
+        ? current.filter((g: string) => g !== group)
+        : [...current, group];
+      setEditingDevice({ ...editingDevice, groups: updated });
+    } else {
+      const current = formData.groups;
+      const updated = current.includes(group) 
+        ? current.filter(g => g !== group)
+        : [...current, group];
+      setFormData({ ...formData, groups: updated });
+    }
   };
 
   const toggleAlertGroup = (group: string, isEditing: boolean = false) => {
@@ -400,7 +419,11 @@ export default function DashboardPage() {
 
   const getLinkedBuddies = (alertGroups: string[]) => {
     if (!devices || !alertGroups) return [];
-    return devices.filter(d => d.category === 'buddy' && alertGroups.includes(d.group));
+    return devices.filter(d => 
+      d.category === 'buddy' && 
+      d.groups && 
+      d.groups.some((g: string) => alertGroups.includes(g))
+    );
   };
 
   if (userLoading) return (
@@ -541,7 +564,9 @@ export default function DashboardPage() {
                                 <div className="flex items-center gap-2">
                                   <p className="text-xs font-bold uppercase">{device.name}</p>
                                   <span className="text-[8px] bg-muted px-1.5 py-0.5 font-bold uppercase opacity-70">{device.category}</span>
-                                  {device.group && <span className="text-[8px] border border-primary/20 px-1.5 py-0.5 font-bold uppercase">{device.group}</span>}
+                                  {device.groups && device.groups.map((g: string) => (
+                                    <span key={g} className="text-[8px] border border-primary/20 px-1.5 py-0.5 font-bold uppercase">{g}</span>
+                                  ))}
                                 </div>
                                 <p className="text-[9px] font-mono text-muted-foreground">ID: {device.id} {device.phoneNumber && `| Contact: ${device.phoneNumber}`}</p>
                               </div>
@@ -626,7 +651,12 @@ export default function DashboardPage() {
                               Priority: <Star className="h-2 w-2 fill-primary text-primary" /> {device.priority || 'High'}
                             </p>
                           </div>
-                          <p className="text-[9px] text-muted-foreground font-mono mt-2">{device.group} | {device.phoneNumber}</p>
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {device.groups && device.groups.map((g: string) => (
+                              <Badge key={g} variant="outline" className="rounded-none text-[8px] px-1.5 py-0 uppercase font-bold border-primary/20">{g}</Badge>
+                            ))}
+                          </div>
+                          <p className="text-[9px] text-muted-foreground font-mono mt-2">{device.phoneNumber}</p>
                         </div>
                         <Users className="h-4 w-4 text-primary" />
                       </CardHeader>
@@ -684,6 +714,14 @@ export default function DashboardPage() {
                         <div className="flex items-center gap-2 mb-4">
                           <div className={cn("h-2 w-2 rounded-full", device.status === 'online' ? 'bg-primary animate-pulse' : 'bg-muted-foreground')} />
                           <span className="text-[10px] font-bold uppercase tracking-wider">Status: {device.status === 'online' ? 'Online' : device.status === 'error' ? 'In Alert Mode' : 'Idle'}</span>
+                        </div>
+                        <div className="mb-4">
+                           <p className="text-[8px] uppercase font-bold text-muted-foreground mb-1">Alerting Groups:</p>
+                           <div className="flex flex-wrap gap-1">
+                             {device.alertGroups && device.alertGroups.map((g: string) => (
+                               <Badge key={g} variant="outline" className="rounded-none text-[8px] px-1.5 py-0 font-bold uppercase bg-primary/5">{g}</Badge>
+                             ))}
+                           </div>
                         </div>
                         <div className="flex gap-2">
                            <Button variant="outline" size="sm" className="rounded-none text-[9px] uppercase font-bold" onClick={() => triggerNodeAlert(device)}>
@@ -822,47 +860,63 @@ export default function DashboardPage() {
           </DialogHeader>
           <div className="pt-6">
             <form onSubmit={(e) => handleRegisterDevice(e, 'buddy')} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="buddy-name" className="text-[10px] uppercase font-bold tracking-widest">Buddy Name</Label>
-                <Input id="buddy-name" placeholder="e.g. Garry" className="rounded-none h-12" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="buddy-phone" className="text-[10px] uppercase font-bold tracking-widest">Phone Number</Label>
-                <Input id="buddy-phone" placeholder="+1..." className="rounded-none h-12" value={formData.phoneNumber} onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})} required />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-[10px] uppercase font-bold tracking-widest">Role</Label>
-                  <Input placeholder="e.g. Primary Emergency" className="rounded-none h-12" value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} />
+              <ScrollArea className="max-h-[60vh] pr-4">
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="buddy-name" className="text-[10px] uppercase font-bold tracking-widest">Buddy Name</Label>
+                    <Input id="buddy-name" placeholder="e.g. Garry" className="rounded-none h-12" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="buddy-phone" className="text-[10px] uppercase font-bold tracking-widest">Phone Number</Label>
+                    <Input id="buddy-phone" placeholder="+1..." className="rounded-none h-12" value={formData.phoneNumber} onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})} required />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] uppercase font-bold tracking-widest">Role</Label>
+                      <Input placeholder="e.g. Primary Emergency" className="rounded-none h-12" value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] uppercase font-bold tracking-widest">Priority</Label>
+                      <Select value={formData.priority} onValueChange={(v) => setFormData({...formData, priority: v})}>
+                        <SelectTrigger className="rounded-none h-12">
+                          <SelectValue placeholder="Priority" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Low">Low</SelectItem>
+                          <SelectItem value="Medium">Medium</SelectItem>
+                          <SelectItem value="High">High</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <Label className="text-[10px] uppercase font-bold flex items-center gap-2">
+                      <ListFilter className="h-3 w-3" /> Security Protocol Groups (Multi-Select)
+                    </Label>
+                    <div className="grid grid-cols-1 gap-2 p-4 bg-muted/30 border border-dashed rounded-none max-h-[150px] overflow-y-auto">
+                      {buddyGroups.map((group) => (
+                        <div key={group} className="flex items-center space-x-2 py-1">
+                          <Checkbox 
+                            id={`buddy-group-${group}`} 
+                            checked={formData.groups.includes(group)}
+                            onCheckedChange={() => toggleBuddyGroup(group)}
+                          />
+                          <Label htmlFor={`buddy-group-${group}`} className="text-[10px] uppercase font-bold cursor-pointer">
+                            {group}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[10px] uppercase font-bold tracking-widest">Additional Safety Notes</Label>
+                    <Textarea placeholder="Specific buddy safety details..." className="rounded-none min-h-[100px]" value={formData.specialData} onChange={(e) => setFormData({...formData, specialData: e.target.value})} />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] uppercase font-bold tracking-widest">Priority</Label>
-                  <Select value={formData.priority} onValueChange={(v) => setFormData({...formData, priority: v})}>
-                    <SelectTrigger className="rounded-none h-12">
-                      <SelectValue placeholder="Priority" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Low">Low</SelectItem>
-                      <SelectItem value="Medium">Medium</SelectItem>
-                      <SelectItem value="High">High</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-[10px] uppercase font-bold tracking-widest">Contact Group</Label>
-                <Select value={formData.group} onValueChange={(v) => setFormData({...formData, group: v})}>
-                  <SelectTrigger className="rounded-none h-12">
-                    <SelectValue placeholder="Select group" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {buddyGroups.map(g => (
-                      <SelectItem key={g} value={g}>{g}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button type="submit" className="w-full rounded-none h-14 uppercase font-bold tracking-widest" disabled={registerLoading}>
+              </ScrollArea>
+              <Button type="submit" className="w-full rounded-none h-14 uppercase font-bold tracking-widest mt-6" disabled={registerLoading}>
                 {registerLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Save & Authorize Buddy"}
               </Button>
             </form>
@@ -933,9 +987,29 @@ export default function DashboardPage() {
                 </div>
                 
                 <div className="space-y-4">
-                  <Label className="text-[10px] uppercase font-bold flex items-center gap-2">
-                    <Radio className="h-3 w-3" /> Target Contact Groups
-                  </Label>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-[10px] uppercase font-bold flex items-center gap-2">
+                      <Layers className="h-3 w-3" /> Target Contact Groups
+                    </Label>
+                    <div className="flex gap-2">
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        className="h-auto p-0 text-[8px] uppercase font-bold text-primary hover:bg-transparent"
+                        onClick={() => setFormData({...formData, alertGroups: [...buddyGroups]})}
+                      >
+                        All
+                      </Button>
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        className="h-auto p-0 text-[8px] uppercase font-bold text-muted-foreground hover:bg-transparent"
+                        onClick={() => setFormData({...formData, alertGroups: []})}
+                      >
+                        None
+                      </Button>
+                    </div>
+                  </div>
                   <div className="grid grid-cols-1 gap-2 p-4 bg-muted/30 border border-dashed rounded-none max-h-[200px] overflow-y-auto">
                     {buddyGroups.map((group) => {
                       const groupBuddies = getBuddiesInGroup(group);
@@ -966,7 +1040,7 @@ export default function DashboardPage() {
                     <div className="flex flex-wrap gap-1">
                       {getLinkedBuddies(formData.alertGroups).length > 0 ? (
                         getLinkedBuddies(formData.alertGroups).map(b => (
-                          <span key={b.id} className="text-[8px] bg-primary/10 text-primary px-2 py-0.5 border border-primary/20 font-bold uppercase">{b.name}</span>
+                          <Badge key={b.id} variant="outline" className="text-[8px] bg-primary/10 text-primary border-primary/20 font-bold uppercase">{b.name}</Badge>
                         ))
                       ) : (
                         <span className="text-[8px] text-muted-foreground italic">No buddies currently linked to these groups.</span>
@@ -1020,11 +1094,30 @@ export default function DashboardPage() {
                           </SelectContent>
                         </Select>
                       </div>
+                      <div className="space-y-4">
+                        <Label className="text-[10px] uppercase font-bold flex items-center gap-2">
+                          <ListFilter className="h-3 w-3" /> Security Protocol Groups
+                        </Label>
+                        <div className="grid grid-cols-1 gap-2 p-4 bg-muted/30 border border-dashed rounded-none max-h-[150px] overflow-y-auto">
+                          {buddyGroups.map((group) => (
+                            <div key={group} className="flex items-center space-x-2 py-1">
+                              <Checkbox 
+                                id={`edit-buddy-group-${group}`} 
+                                checked={(editingDevice.groups || []).includes(group)}
+                                onCheckedChange={() => toggleBuddyGroup(group, true)}
+                              />
+                              <Label htmlFor={`edit-buddy-group-${group}`} className="text-[10px] uppercase font-bold cursor-pointer">
+                                {group}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </>
                   ) : (
                     <div className="space-y-4">
                       <Label className="text-[10px] uppercase font-bold flex items-center gap-2">
-                        <Radio className="h-3 w-3" /> Target Contact Groups
+                        <Layers className="h-3 w-3" /> Target Contact Groups
                       </Label>
                       <div className="grid grid-cols-1 gap-2 p-4 bg-muted/30 border border-dashed rounded-none max-h-[200px] overflow-y-auto">
                         {buddyGroups.map((group) => {
@@ -1075,6 +1168,14 @@ export default function DashboardPage() {
                 <div className="space-y-1">
                   <p className="text-[8px] uppercase font-bold text-muted-foreground">Unique Hash ID</p>
                   <p className="text-xs font-mono">{viewingDevice.id}</p>
+                </div>
+                <div className="space-y-1 col-span-2">
+                  <p className="text-[8px] uppercase font-bold text-muted-foreground">Assigned Protocol Groups</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {(viewingDevice.groups || viewingDevice.alertGroups || []).map((g: string) => (
+                      <Badge key={g} variant="outline" className="text-[8px] uppercase font-bold">{g}</Badge>
+                    ))}
+                  </div>
                 </div>
                 {viewingDevice.category === 'node' && viewingDevice.alertGroups && (
                   <div className="space-y-3 col-span-2 border-t border-dashed pt-4">
