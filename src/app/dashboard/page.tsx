@@ -119,14 +119,10 @@ export default function DashboardPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
 
-  const currentEmailPrefix = useMemo(() => {
+  const currentName = useMemo(() => {
     if (!user?.email) return "User";
     return user.email.split('@')[0];
   }, [user]);
-
-  const currentName = useMemo(() => {
-    return currentEmailPrefix;
-  }, [currentEmailPrefix]);
 
   useEffect(() => {
     if (!userLoading && !user) {
@@ -154,14 +150,15 @@ export default function DashboardPage() {
    */
   useEffect(() => {
     if (typeof window !== 'undefined' && rtdb) {
-      (window as any).triggerSOS = () => {
+      (window as any).triggerSOS = (nodeName?: string) => {
         const sosRef = ref(rtdb, "sosSystem");
         set(sosRef, {
           sosTrigger: true,
           sender: currentName,
+          nodeName: nodeName || "Global Script Trigger",
           timestamp: Date.now()
         }).then(() => {
-          createNotification("MASTER SOS ACTIVATED via GLOBAL SCRIPT");
+          createNotification(`MASTER SOS ACTIVATED via SCRIPT (${nodeName || 'Global'})`);
           toast({
             variant: "destructive",
             title: "MASTER SOS ACTIVATED",
@@ -419,6 +416,7 @@ export default function DashboardPage() {
     set(sosRef, {
       sosTrigger: true,
       sender: currentName,
+      nodeName: node.name,
       timestamp: Date.now(),
       triggeredByNode: node.id
     });
