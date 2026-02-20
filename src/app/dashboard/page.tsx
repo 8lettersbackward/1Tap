@@ -674,12 +674,6 @@ export default function DashboardPage() {
                             </p>
                           </div>
                         ))}
-                        <button 
-                          onClick={() => (window as any).triggerSOS()} 
-                          className="text-[8px] uppercase font-bold text-muted-foreground/30 hover:text-foreground transition-colors mt-4 block"
-                        >
-                          Simulation: triggerSOS()
-                        </button>
                       </div>
                     </div>
                  </div>
@@ -1068,24 +1062,6 @@ export default function DashboardPage() {
                     <Label className="text-[10px] uppercase font-bold flex items-center gap-2">
                       <Layers className="h-3 w-3" /> Target Contact Groups
                     </Label>
-                    <div className="flex gap-2">
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        className="h-auto p-0 text-[8px] uppercase font-bold text-primary hover:bg-transparent"
-                        onClick={() => setFormData({...formData, alertGroups: [...buddyGroups]})}
-                      >
-                        All
-                      </Button>
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        className="h-auto p-0 text-[8px] uppercase font-bold text-muted-foreground hover:bg-transparent"
-                        onClick={() => setFormData({...formData, alertGroups: []})}
-                      >
-                        None
-                      </Button>
-                    </div>
                   </div>
                   <div className="grid grid-cols-1 gap-2 p-4 bg-muted/30 border border-dashed rounded-none max-h-[200px] overflow-y-auto">
                     {buddyGroups.map((group) => {
