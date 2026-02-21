@@ -8,15 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -35,35 +32,26 @@ import {
   Bell, 
   Cpu, 
   Activity,
-  ShieldCheck,
   Smartphone,
   Loader2,
   Trash2,
   LogOut,
-  Moon,
-  Sun,
   LayoutDashboard,
   History,
-  ShieldAlert,
   PlusSquare,
   UserPlus,
   Layers,
   MapPin,
-  Map as MapIcon,
-  Navigation,
-  Star,
   Zap,
-  Search,
-  PlusCircle,
-  ListFilter
+  PlusCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ref, set, push, remove, serverTimestamp } from "firebase/database";
 import { signOut } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { PieChart, Pie, Cell } from "recharts";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ChartContainer } from "@/components/ui/chart";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { reverseGeocode } from "@/ai/flows/reverse-geocode-flow";
@@ -81,7 +69,6 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const [searchQuery, setSearchQuery] = useState("");
 
   const [registerLoading, setRegisterLoading] = useState(false);
   const [buddyForm, setBuddyForm] = useState({
@@ -103,8 +90,6 @@ export default function DashboardPage() {
   const [resolvingLocation, setResolvingLocation] = useState(false);
   const [updatingLocation, setUpdatingLocation] = useState(false);
 
-  const [editingItem, setEditingItem] = useState<any>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAddBuddyDialogOpen, setIsAddBuddyDialogOpen] = useState(false);
   const [isAddNodeDialogOpen, setIsAddNodeDialogOpen] = useState(false);
   const [isManageGroupsDialogOpen, setIsManageGroupsDialogOpen] = useState(false);
@@ -132,10 +117,10 @@ export default function DashboardPage() {
   const { data: customGroupsData } = useRtdb(groupsRef);
 
   const buddiesRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/buddies`) : null, [rtdb, user]);
-  const { data: buddiesData, loading: buddiesLoading } = useRtdb(buddiesRef);
+  const { data: buddiesData } = useRtdb(buddiesRef);
 
   const nodesRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/nodes`) : null, [rtdb, user]);
-  const { data: nodesData, loading: nodesLoading } = useRtdb(nodesRef);
+  const { data: nodesData } = useRtdb(nodesRef);
 
   const notificationsRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/notifications`) : null, [rtdb, user]);
   const { data: notificationsData } = useRtdb(notificationsRef);
@@ -261,6 +246,16 @@ export default function DashboardPage() {
     } else broadcastSOS();
   };
 
+  if (userLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!user) return null;
+
   const navItems = [
     { id: 'overview', label: 'Safety Overview', icon: LayoutDashboard },
     { id: 'buddies', label: 'Manage Buddies', icon: Smartphone },
@@ -282,7 +277,7 @@ export default function DashboardPage() {
             </Avatar>
             <div className="overflow-hidden">
               <p className="text-[10px] font-bold uppercase tracking-widest truncate">{currentName}</p>
-              <p className="text-[8px] text-muted-foreground uppercase font-mono truncate">{user.email}</p>
+              <p className="text-[8px] text-muted-foreground uppercase font-mono truncate">{user?.email}</p>
             </div>
           </div>
           {navItems.map((item) => (
