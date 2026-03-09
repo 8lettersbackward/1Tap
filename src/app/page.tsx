@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -26,12 +25,10 @@ export default function Home() {
     );
   }
 
-  // Prevent flash of content if user is logged in
   if (user) return null;
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-4rem)]">
-      {/* Hero Section */}
       <section className="flex-1 flex items-center justify-center px-4 bg-background">
         <div className="max-w-4xl text-center">
           <div className="flex justify-center mb-6 animate-in fade-in zoom-in duration-1000">
@@ -58,7 +55,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Simplified Footer */}
       <footer className="py-8 border-t text-center text-muted-foreground text-xs tracking-widest uppercase">
         <div className="max-w-7xl mx-auto px-4">
           <p>© 2024 1tap. Clarity in Protection.</p>

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useUser, useDatabase, useRtdb, useFirebase } from "@/firebase";
@@ -263,7 +262,6 @@ export default function DashboardPage() {
   const triggerNodeAlert = (node: any) => {
     if (!user || !rtdb) return;
 
-    // Toggle logic: If SOS is active and this node was the trigger, reset it.
     const isCurrentlyActive = sosStatus?.sosTrigger === true;
     const isThisNodeTheTrigger = sosStatus?.triggeredByNode === node.id;
 
@@ -272,7 +270,7 @@ export default function DashboardPage() {
         sosTrigger: false,
         timestamp: Date.now(),
       });
-      toast({ title: "SOS Reset", description: "System deactivated and returned to standby." });
+      toast({ title: "SOS Reset" });
       return;
     }
 
@@ -287,7 +285,7 @@ export default function DashboardPage() {
         latitude: lat || profileData?.latitude || null,
         longitude: lng || profileData?.longitude || null,
       });
-      toast({ title: "SOS Triggered", description: "Signal broadcasted to emergency network." });
+      toast({ title: "SOS Triggered" });
     };
 
     if ("geolocation" in navigator) {
@@ -603,7 +601,6 @@ export default function DashboardPage() {
         </div>
       </main>
 
-      {/* DIALOGS */}
       <Dialog open={isAddBuddyDialogOpen} onOpenChange={setIsAddBuddyDialogOpen}>
         <DialogContent className="rounded-none border-none">
           <DialogHeader><DialogTitle className="uppercase font-bold">Enlist Buddy</DialogTitle></DialogHeader>
@@ -845,7 +842,6 @@ export default function DashboardPage() {
             <AlertDialogDescription className="text-xs uppercase">This action is final.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-none text-[10px] font-bold uppercase">Abort</AlertDialogCancel>
             <AlertDialogAction onClick={() => {
               if (!user || !itemToDelete) return;
               const path = itemToDelete.type === 'buddy' ? `users/${user.uid}/buddies/${itemToDelete.id}` : `users/${user.uid}/nodes/${itemToDelete.id}`;
@@ -854,6 +850,7 @@ export default function DashboardPage() {
                 setItemToDelete(null);
               });
             }} className="rounded-none text-[10px] font-bold uppercase bg-destructive text-destructive-foreground">Purge</AlertDialogAction>
+            <AlertDialogCancel className="rounded-none text-[10px] font-bold uppercase">Abort</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
