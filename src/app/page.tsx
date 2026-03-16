@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -41,7 +42,7 @@ export default function Home() {
           
           <div className="space-y-6">
             <h1 className="text-6xl md:text-9xl font-bold tracking-tighter text-white leading-none">
-              1TAP <br /> <span className="text-secondary uppercase tracking-[0.1em]">HUB</span>
+              1TAP <br /> <span className="text-secondary uppercase tracking-[0.1em]">EMERGENCY BUDDY</span>
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto font-medium leading-relaxed">
               Professional safety orchestration. <br className="hidden md:block" /> Secure protection in a single tap.
@@ -56,7 +57,7 @@ export default function Home() {
             </Link>
             <Link href="/login">
               <Button size="lg" variant="ghost" className="glass-card px-12 h-16 text-sm font-bold uppercase rounded-2xl border-white/20 text-white tracking-[0.2em] hover:bg-white/10">
-                Access Hub
+                Access Terminal
               </Button>
             </Link>
           </div>
