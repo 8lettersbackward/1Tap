@@ -47,6 +47,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 
 type TabType = 'buddies' | 'nodes' | 'notifications' | 'settings';
 
@@ -211,14 +212,12 @@ export default function DashboardPage() {
     if (!user || !rtdb) return;
 
     const isCurrentlyActive = sosStatus?.sosTrigger === true;
-    const isThisNodeTheTrigger = sosStatus?.triggeredByNode === node.id;
 
-    if (isCurrentlyActive && isThisNodeTheTrigger) {
+    if (isCurrentlyActive) {
       update(ref(rtdb, "sosSystem"), {
         sosTrigger: false,
         timestamp: Date.now(),
       });
-      toast({ title: "SOS Reset" });
       return;
     }
 
@@ -233,7 +232,6 @@ export default function DashboardPage() {
         latitude: lat || profileData?.latitude || null,
         longitude: lng || profileData?.longitude || null,
       });
-      toast({ title: "SOS Triggered" });
     };
 
     if ("geolocation" in navigator) {
@@ -250,7 +248,6 @@ export default function DashboardPage() {
       <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Synchronizing Safety Hub</p>
         </div>
       </div>
     );
@@ -270,8 +267,8 @@ export default function DashboardPage() {
       <aside className="w-full md:w-80 border-r bg-muted/5 order-1">
         <div className="sticky top-16 p-6 space-y-2">
           <div className="px-4 py-6 mb-4 flex items-center gap-4 border-b border-dashed">
-            <Avatar className="h-10 w-10 rounded-none border border-primary">
-              <AvatarFallback className="rounded-none bg-primary text-primary-foreground font-bold text-xs">
+            <Avatar className="h-10 w-10 rounded-full border border-primary">
+              <AvatarFallback className="rounded-full bg-primary text-primary-foreground font-bold text-xs">
                 {currentName[0].toUpperCase()}
               </AvatarFallback>
             </Avatar>
@@ -280,17 +277,13 @@ export default function DashboardPage() {
               <p className="text-[8px] text-muted-foreground uppercase font-mono truncate">{user.email}</p>
             </div>
           </div>
-          
-          <div className="px-4 pb-2 mt-6">
-            <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-muted-foreground opacity-60">Control Center</p>
-          </div>
 
           {navItems.map((item) => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id as TabType)}
               className={cn(
-                "w-full flex items-center justify-between px-4 py-3 transition-all",
+                "w-full flex items-center justify-between px-4 py-3 transition-all rounded-md",
                 activeTab === item.id ? "bg-primary text-primary-foreground font-bold" : "hover:bg-muted text-muted-foreground"
               )}
             >
@@ -308,10 +301,10 @@ export default function DashboardPage() {
           {activeTab === 'buddies' && (
             <div className="space-y-6">
               <div className="flex gap-4">
-                <Button onClick={() => setIsAddBuddyDialogOpen(true)} variant="outline" className="rounded-none uppercase font-bold text-[10px] gap-2">
+                <Button onClick={() => setIsAddBuddyDialogOpen(true)} variant="outline" className="uppercase font-bold text-[10px] gap-2">
                   <UserPlus className="h-4 w-4" /> Enlist Buddy
                 </Button>
-                <Button onClick={() => setIsManageGroupsDialogOpen(true)} variant="outline" className="rounded-none uppercase font-bold text-[10px] gap-2">
+                <Button onClick={() => setIsManageGroupsDialogOpen(true)} variant="outline" className="uppercase font-bold text-[10px] gap-2">
                   <Layers className="h-4 w-4" /> Protocols
                 </Button>
               </div>
@@ -320,12 +313,11 @@ export default function DashboardPage() {
                 <div className="p-16 border-2 border-dashed bg-muted/5 flex flex-col items-center justify-center text-center">
                   <Smartphone className="h-10 w-10 text-muted-foreground mb-4 opacity-20" />
                   <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground mb-1">No Buddy Enlisted</p>
-                  <p className="text-[8px] uppercase text-muted-foreground font-mono">Your safety network is currently empty.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {buddies.map(buddy => (
-                    <Card key={buddy.id} className="border-none bg-muted/30 rounded-none relative">
+                    <Card key={buddy.id} className="border bg-card shadow-sm relative">
                       <CardHeader className="pb-2">
                         <div className="flex justify-between items-start">
                           <div>
@@ -337,13 +329,13 @@ export default function DashboardPage() {
                       <CardContent className="space-y-4">
                         <div className="flex flex-wrap gap-1">
                           {buddy.groups?.map((g: string) => (
-                            <Badge key={g} className="rounded-none text-[8px] uppercase font-bold">{g}</Badge>
+                            <Badge key={g} className="text-[8px] uppercase font-bold">{g}</Badge>
                           ))}
                         </div>
                         <div className="flex gap-2">
-                          <Button variant="outline" size="sm" className="rounded-none text-[8px] uppercase font-bold" onClick={() => { setItemToView(buddy); setIsViewItemDialogOpen(true); }}><Eye className="h-3 w-3 mr-1" /> View</Button>
-                          <Button variant="outline" size="sm" className="rounded-none text-[8px] uppercase font-bold" onClick={() => { setItemToEdit(buddy); setIsEditBuddyDialogOpen(true); }}><Pencil className="h-3 w-3 mr-1" /> Edit</Button>
-                          <Button variant="outline" size="sm" className="rounded-none text-[8px] uppercase font-bold" onClick={() => { setItemToDelete({ ...buddy, type: 'buddy' }); setIsDeleteDialogOpen(true); }}><Trash2 className="h-3 w-3" /></Button>
+                          <Button variant="outline" size="sm" className="text-[8px] uppercase font-bold" onClick={() => { setItemToView(buddy); setIsViewItemDialogOpen(true); }}><Eye className="h-3 w-3 mr-1" /> View</Button>
+                          <Button variant="outline" size="sm" className="text-[8px] uppercase font-bold" onClick={() => { setItemToEdit(buddy); setIsEditBuddyDialogOpen(true); }}><Pencil className="h-3 w-3 mr-1" /> Edit</Button>
+                          <Button variant="outline" size="sm" className="text-[8px] uppercase font-bold" onClick={() => { setItemToDelete({ ...buddy, type: 'buddy' }); setIsDeleteDialogOpen(true); }}><Trash2 className="h-3 w-3" /></Button>
                         </div>
                       </CardContent>
                     </Card>
@@ -355,7 +347,7 @@ export default function DashboardPage() {
 
           {activeTab === 'nodes' && (
             <div className="space-y-6">
-              <Button onClick={() => setIsAddNodeDialogOpen(true)} variant="outline" className="rounded-none uppercase font-bold text-[10px] gap-2">
+              <Button onClick={() => setIsAddNodeDialogOpen(true)} variant="outline" className="uppercase font-bold text-[10px] gap-2">
                 <PlusSquare className="h-4 w-4" /> Arm Node
               </Button>
 
@@ -363,16 +355,15 @@ export default function DashboardPage() {
                 <div className="p-16 border-2 border-dashed bg-muted/5 flex flex-col items-center justify-center text-center">
                   <Cpu className="h-10 w-10 text-muted-foreground mb-4 opacity-20" />
                   <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground mb-1">No Nodes Armed</p>
-                  <p className="text-[8px] uppercase text-muted-foreground font-mono">Initialize hardware to start tracking.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {nodes.map(node => (
-                    <Card key={node.id} className="border-none bg-muted/30 rounded-none relative">
+                    <Card key={node.id} className="border bg-card shadow-sm relative">
                       <CardHeader className="pb-2">
                         <div className="flex justify-between items-center">
                           <p className="text-lg font-bold uppercase">{node.nodeName}</p>
-                          <div className={cn("h-2 w-2", node.status === 'online' ? 'bg-primary' : 'bg-destructive')} />
+                          <div className={cn("h-2 w-2 rounded-full", node.status === 'online' ? 'bg-green-500' : 'bg-destructive')} />
                         </div>
                         <p className="text-[10px] font-mono text-muted-foreground">ID: {node.hardwareId}</p>
                       </CardHeader>
@@ -381,7 +372,7 @@ export default function DashboardPage() {
                           <p className="text-[8px] uppercase font-bold text-muted-foreground mb-1">Target Groups:</p>
                           <div className="flex flex-wrap gap-1">
                             {node.targetGroups?.map((g: string) => (
-                              <Badge key={g} variant="outline" className="rounded-none text-[8px] uppercase font-bold">{g}</Badge>
+                              <Badge key={g} variant="outline" className="text-[8px] uppercase font-bold">{g}</Badge>
                             ))}
                           </div>
                         </div>
@@ -389,14 +380,14 @@ export default function DashboardPage() {
                           <Button 
                             variant={sosStatus?.sosTrigger && sosStatus?.triggeredByNode === node.id ? "destructive" : "default"} 
                             size="sm" 
-                            className="rounded-none text-[8px] uppercase font-bold gap-2" 
+                            className="text-[8px] uppercase font-bold gap-2" 
                             onClick={() => triggerNodeAlert(node)}
                           >
                             <Zap className="h-3 w-3" /> 
                             {sosStatus?.sosTrigger && sosStatus?.triggeredByNode === node.id ? "Reset SOS" : "Trigger SOS"}
                           </Button>
-                          <Button variant="outline" size="sm" className="rounded-none text-[8px] uppercase font-bold" onClick={() => { setItemToEdit(node); setIsEditNodeDialogOpen(true); }}><Pencil className="h-3 w-3" /></Button>
-                          <Button variant="outline" size="sm" className="rounded-none text-[8px] uppercase font-bold" onClick={() => { setItemToDelete({ ...node, type: 'node' }); setIsDeleteDialogOpen(true); }}><Trash2 className="h-3 w-3" /></Button>
+                          <Button variant="outline" size="sm" className="text-[8px] uppercase font-bold" onClick={() => { setItemToEdit(node); setIsEditNodeDialogOpen(true); }}><Pencil className="h-3 w-3" /></Button>
+                          <Button variant="outline" size="sm" className="text-[8px] uppercase font-bold" onClick={() => { setItemToDelete({ ...node, type: 'node' }); setIsDeleteDialogOpen(true); }}><Trash2 className="h-3 w-3" /></Button>
                         </div>
                       </CardContent>
                     </Card>
@@ -410,9 +401,8 @@ export default function DashboardPage() {
             <div className="space-y-6">
                <header className="mb-2">
                 <h2 className="text-4xl font-headline font-bold tracking-tighter uppercase">Safety Alerts</h2>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Protocol Logs & Broadcast History</p>
               </header>
-              <ScrollArea className="h-[500px] border-2 border-dashed p-6">
+              <ScrollArea className="h-[500px] border p-6 rounded-md bg-muted/5">
                 {notifications.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full opacity-20">
                     <Bell className="h-12 w-12 mb-4" />
@@ -420,7 +410,7 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   notifications.map(n => (
-                    <div key={n.id} className="mb-6 pb-4 border-b border-dashed last:border-0">
+                    <div key={n.id} className="mb-6 pb-4 border-b last:border-0">
                       <div className="flex justify-between items-start mb-1">
                         <p className="text-sm font-bold uppercase">{n.message}</p>
                         <Badge variant="outline" className="text-[8px] font-mono">{hasMounted ? new Date(n.createdAt).toLocaleTimeString() : '...'}</Badge>
@@ -437,13 +427,13 @@ export default function DashboardPage() {
 
           {activeTab === 'settings' && (
             <div className="max-w-md space-y-6">
-              <Card className="border-none bg-muted/30 rounded-none">
+              <Card className="border bg-card shadow-sm">
                 <CardContent className="p-6 flex items-center justify-between">
                   <span className="text-[10px] uppercase font-bold">Dark Protocol</span>
                   <Switch checked={theme === 'dark'} onCheckedChange={toggleTheme} />
                 </CardContent>
               </Card>
-              <Button variant="destructive" onClick={() => signOut(auth).then(() => router.push("/login"))} className="w-full rounded-none uppercase font-bold h-14 tracking-widest gap-2">
+              <Button variant="destructive" onClick={() => signOut(auth).then(() => router.push("/login"))} className="w-full uppercase font-bold h-14 tracking-widest gap-2">
                 <LogOut className="h-4 w-4" /> Terminate Session
               </Button>
             </div>
@@ -452,20 +442,20 @@ export default function DashboardPage() {
       </main>
 
       <Dialog open={isAddBuddyDialogOpen} onOpenChange={setIsAddBuddyDialogOpen}>
-        <DialogContent className="rounded-none border-none">
+        <DialogContent className="border bg-background">
           <DialogHeader><DialogTitle className="uppercase font-bold">Enlist Buddy</DialogTitle></DialogHeader>
           <form onSubmit={handleRegisterBuddy} className="space-y-4 pt-4">
             <div className="space-y-2">
               <Label className="text-[10px] uppercase font-bold">Full Name</Label>
-              <Input value={buddyForm.name} onChange={e => setBuddyForm({...buddyForm, name: e.target.value})} required className="rounded-none" />
+              <Input value={buddyForm.name} onChange={e => setBuddyForm({...buddyForm, name: e.target.value})} required />
             </div>
             <div className="space-y-2">
               <Label className="text-[10px] uppercase font-bold">Phone Number</Label>
-              <Input value={buddyForm.phoneNumber} onChange={e => setBuddyForm({...buddyForm, phoneNumber: e.target.value})} required className="rounded-none" />
+              <Input value={buddyForm.phoneNumber} onChange={e => setBuddyForm({...buddyForm, phoneNumber: e.target.value})} required />
             </div>
             <div className="space-y-2">
               <Label className="text-[10px] uppercase font-bold">Protocol Groups</Label>
-              <div className="grid grid-cols-2 gap-2 p-2 border border-dashed">
+              <div className="grid grid-cols-2 gap-2 p-2 border rounded-md">
                 {buddyGroups.map(g => (
                   <div key={g} className="flex items-center gap-2">
                     <Checkbox checked={buddyForm.groups.includes(g)} onCheckedChange={() => {
@@ -477,7 +467,7 @@ export default function DashboardPage() {
                 ))}
               </div>
             </div>
-            <Button type="submit" className="w-full rounded-none h-12 uppercase font-bold" disabled={registerLoading}>
+            <Button type="submit" className="w-full h-12 uppercase font-bold" disabled={registerLoading}>
               {registerLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Buddy"}
             </Button>
           </form>
@@ -485,21 +475,21 @@ export default function DashboardPage() {
       </Dialog>
 
       <Dialog open={isEditBuddyDialogOpen} onOpenChange={setIsEditBuddyDialogOpen}>
-        <DialogContent className="rounded-none border-none">
+        <DialogContent className="border bg-background">
           <DialogHeader><DialogTitle className="uppercase font-bold">Edit Buddy</DialogTitle></DialogHeader>
           {itemToEdit && (
             <form onSubmit={handleUpdateBuddy} className="space-y-4 pt-4">
               <div className="space-y-2">
                 <Label className="text-[10px] uppercase font-bold">Full Name</Label>
-                <Input value={itemToEdit.name} onChange={e => setItemToEdit({...itemToEdit, name: e.target.value})} required className="rounded-none" />
+                <Input value={itemToEdit.name} onChange={e => setItemToEdit({...itemToEdit, name: e.target.value})} required />
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] uppercase font-bold">Phone Number</Label>
-                <Input value={itemToEdit.phoneNumber} onChange={e => setItemToEdit({...itemToEdit, phoneNumber: e.target.value})} required className="rounded-none" />
+                <Input value={itemToEdit.phoneNumber} onChange={e => setItemToEdit({...itemToEdit, phoneNumber: e.target.value})} required />
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] uppercase font-bold">Protocol Groups</Label>
-                <div className="grid grid-cols-2 gap-2 p-2 border border-dashed">
+                <div className="grid grid-cols-2 gap-2 p-2 border rounded-md">
                   {buddyGroups.map(g => (
                     <div key={g} className="flex items-center gap-2">
                       <Checkbox checked={itemToEdit.groups?.includes(g)} onCheckedChange={() => {
@@ -512,7 +502,7 @@ export default function DashboardPage() {
                   ))}
                 </div>
               </div>
-              <Button type="submit" className="w-full rounded-none h-12 uppercase font-bold" disabled={registerLoading}>
+              <Button type="submit" className="w-full h-12 uppercase font-bold" disabled={registerLoading}>
                 {registerLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update Buddy"}
               </Button>
             </form>
@@ -521,20 +511,20 @@ export default function DashboardPage() {
       </Dialog>
 
       <Dialog open={isAddNodeDialogOpen} onOpenChange={setIsAddNodeDialogOpen}>
-        <DialogContent className="rounded-none border-none">
+        <DialogContent className="border bg-background">
           <DialogHeader><DialogTitle className="uppercase font-bold">Arm Node</DialogTitle></DialogHeader>
           <form onSubmit={handleRegisterNode} className="space-y-4 pt-4">
             <div className="space-y-2">
               <Label className="text-[10px] uppercase font-bold">Node Name</Label>
-              <Input value={nodeForm.nodeName} onChange={e => setNodeForm({...nodeForm, nodeName: e.target.value})} required className="rounded-none" />
+              <Input value={nodeForm.nodeName} onChange={e => setNodeForm({...nodeForm, nodeName: e.target.value})} required />
             </div>
             <div className="space-y-2">
               <Label className="text-[10px] uppercase font-bold">Hardware ID</Label>
-              <Input value={nodeForm.hardwareId} onChange={e => setNodeForm({...nodeForm, hardwareId: e.target.value})} required className="rounded-none" />
+              <Input value={nodeForm.hardwareId} onChange={e => setNodeForm({...nodeForm, hardwareId: e.target.value})} required />
             </div>
             <div className="space-y-2">
               <Label className="text-[10px] uppercase font-bold">Target Alert Groups</Label>
-              <div className="grid grid-cols-2 gap-2 p-2 border border-dashed">
+              <div className="grid grid-cols-2 gap-2 p-2 border rounded-md">
                 {buddyGroups.map(g => (
                   <div key={g} className="flex items-center gap-2">
                     <Checkbox checked={nodeForm.targetGroups.includes(g)} onCheckedChange={() => {
@@ -546,7 +536,7 @@ export default function DashboardPage() {
                 ))}
               </div>
             </div>
-            <Button type="submit" className="w-full rounded-none h-12 uppercase font-bold" disabled={registerLoading}>
+            <Button type="submit" className="w-full h-12 uppercase font-bold" disabled={registerLoading}>
               {registerLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Arm Hardware"}
             </Button>
           </form>
@@ -554,21 +544,21 @@ export default function DashboardPage() {
       </Dialog>
 
       <Dialog open={isEditNodeDialogOpen} onOpenChange={setIsEditNodeDialogOpen}>
-        <DialogContent className="rounded-none border-none">
+        <DialogContent className="border bg-background">
           <DialogHeader><DialogTitle className="uppercase font-bold">Edit Node</DialogTitle></DialogHeader>
           {itemToEdit && (
             <form onSubmit={handleUpdateNode} className="space-y-4 pt-4">
               <div className="space-y-2">
                 <Label className="text-[10px] uppercase font-bold">Node Name</Label>
-                <Input value={itemToEdit.nodeName} onChange={e => setItemToEdit({...itemToEdit, nodeName: e.target.value})} required className="rounded-none" />
+                <Input value={itemToEdit.nodeName} onChange={e => setItemToEdit({...itemToEdit, nodeName: e.target.value})} required />
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] uppercase font-bold">Hardware ID</Label>
-                <Input value={itemToEdit.hardwareId} disabled className="rounded-none bg-muted/50" />
+                <Input value={itemToEdit.hardwareId} disabled className="bg-muted/50" />
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] uppercase font-bold">Target Alert Groups</Label>
-                <div className="grid grid-cols-2 gap-2 p-2 border border-dashed">
+                <div className="grid grid-cols-2 gap-2 p-2 border rounded-md">
                   {buddyGroups.map(g => (
                     <div key={g} className="flex items-center gap-2">
                       <Checkbox checked={itemToEdit.targetGroups?.includes(g)} onCheckedChange={() => {
@@ -581,7 +571,7 @@ export default function DashboardPage() {
                   ))}
                 </div>
               </div>
-              <Button type="submit" className="w-full rounded-none h-12 uppercase font-bold" disabled={registerLoading}>
+              <Button type="submit" className="w-full h-12 uppercase font-bold" disabled={registerLoading}>
                 {registerLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update Node"}
               </Button>
             </form>
@@ -590,20 +580,20 @@ export default function DashboardPage() {
       </Dialog>
 
       <Dialog open={isViewItemDialogOpen} onOpenChange={setIsViewItemDialogOpen}>
-        <DialogContent className="rounded-none border-none">
+        <DialogContent className="border bg-background">
           <DialogHeader><DialogTitle className="uppercase font-bold">Asset Overview</DialogTitle></DialogHeader>
           {itemToView && (
             <div className="space-y-4 pt-4">
-               <div className="p-4 bg-muted/20 border border-dashed rounded-none">
+               <div className="p-4 bg-muted/20 border rounded-md">
                   <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Asset Identity</p>
                   <p className="text-xl font-bold uppercase">{itemToView.name || itemToView.nodeName}</p>
                   <p className="text-xs font-mono mt-1">{itemToView.phoneNumber || itemToView.hardwareId}</p>
                </div>
-               <div className="p-4 bg-muted/20 border border-dashed rounded-none">
+               <div className="p-4 bg-muted/20 border rounded-md">
                   <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Assigned Protocols</p>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {(itemToView.groups || itemToView.targetGroups || []).map((g: string) => (
-                      <Badge key={g} className="rounded-none text-[8px] uppercase font-bold">{g}</Badge>
+                      <Badge key={g} className="text-[8px] uppercase font-bold">{g}</Badge>
                     ))}
                   </div>
                </div>
@@ -613,20 +603,20 @@ export default function DashboardPage() {
       </Dialog>
 
       <Dialog open={isManageGroupsDialogOpen} onOpenChange={setIsManageGroupsDialogOpen}>
-        <DialogContent className="rounded-none border-none">
+        <DialogContent className="border bg-background">
           <DialogHeader><DialogTitle className="uppercase font-bold">Manage Protocols</DialogTitle></DialogHeader>
           <div className="space-y-6 pt-4">
             <div className="flex gap-2">
-              <Input value={newGroupName} onChange={e => setNewGroupName(e.target.value)} placeholder="NEW GROUP" className="rounded-none uppercase text-[10px] font-bold" />
+              <Input value={newGroupName} onChange={e => setNewGroupName(e.target.value)} placeholder="NEW GROUP" className="uppercase text-[10px] font-bold" />
               <Button onClick={() => {
                 if (!user || !newGroupName) return;
                 push(ref(rtdb, `users/${user.uid}/buddyGroups`), { name: newGroupName });
                 setNewGroupName("");
-              }} variant="outline" className="rounded-none"><PlusCircle className="h-4 w-4" /></Button>
+              }} variant="outline"><PlusCircle className="h-4 w-4" /></Button>
             </div>
             <div className="space-y-2">
               {buddyGroups.map(g => (
-                <div key={g} className="p-3 bg-muted/20 border border-dashed flex justify-between items-center">
+                <div key={g} className="p-3 bg-muted/20 border flex justify-between items-center rounded-md">
                   <span className="text-[10px] uppercase font-bold">{g}</span>
                   {!DEFAULT_BUDDY_GROUPS.includes(g) && (
                     <Button variant="ghost" size="sm" onClick={() => {
@@ -642,7 +632,7 @@ export default function DashboardPage() {
       </Dialog>
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="rounded-none border-none">
+        <AlertDialogContent className="border bg-background">
           <AlertDialogHeader>
             <AlertDialogTitle className="uppercase font-bold">Purge Asset?</AlertDialogTitle>
             <AlertDialogDescription className="text-xs uppercase">This action is final.</AlertDialogDescription>
@@ -655,8 +645,8 @@ export default function DashboardPage() {
                 setIsDeleteDialogOpen(false);
                 setItemToDelete(null);
               });
-            }} className="rounded-none text-[10px] font-bold uppercase bg-destructive text-destructive-foreground">Purge</AlertDialogAction>
-            <AlertDialogCancel className="rounded-none text-[10px] font-bold uppercase">Abort</AlertDialogCancel>
+            }} className="text-[10px] font-bold uppercase bg-destructive text-destructive-foreground">Purge</AlertDialogAction>
+            <AlertDialogCancel className="text-[10px] font-bold uppercase">Abort</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

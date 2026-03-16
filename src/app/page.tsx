@@ -28,26 +28,26 @@ export default function Home() {
   if (user) return null;
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-4rem)]">
-      <section className="flex-1 flex items-center justify-center px-4 bg-background">
+    <div className="flex flex-col min-h-[calc(100vh-4rem)] bg-background">
+      <section className="flex-1 flex items-center justify-center px-4">
         <div className="max-w-4xl text-center">
-          <div className="flex justify-center mb-6 animate-in fade-in zoom-in duration-1000">
+          <div className="flex justify-center mb-6">
             <ShieldAlert className="h-16 w-16 text-primary" />
           </div>
-          <h1 className="text-6xl md:text-8xl font-headline font-bold tracking-tighter mb-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            1TAP <br /> <span className="text-muted-foreground uppercase">Emergency Buddy</span>
+          <h1 className="text-6xl md:text-8xl font-headline font-bold tracking-tighter mb-8 text-primary">
+            1TAP <br /> <span className="text-secondary uppercase">Emergency Buddy</span>
           </h1>
-          <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-200">
+          <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
             Instant safety orchestration and emergency response. Pure clarity, absolute protection in a single tap.
           </p>
-          <div className="flex flex-col sm:flex-row gap-6 justify-center animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-500">
+          <div className="flex flex-col sm:flex-row gap-6 justify-center">
             <Link href="/signup">
-              <Button size="lg" className="px-10 h-14 text-lg font-bold rounded-none">
+              <Button size="lg" className="px-10 h-14 text-lg font-bold">
                 Secure My Life <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
             <Link href="/login">
-              <Button size="lg" variant="outline" className="px-10 h-14 text-lg font-bold rounded-none">
+              <Button size="lg" variant="outline" className="px-10 h-14 text-lg font-bold border-primary text-primary">
                 Sign In
               </Button>
             </Link>
