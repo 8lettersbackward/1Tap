@@ -136,6 +136,16 @@ export default function DashboardPage() {
       .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   }, [notificationsData]);
 
+  const logAction = (message: string) => {
+    if (!user || !rtdb) return;
+    const notificationRef = ref(rtdb, `users/${user.uid}/notifications`);
+    push(notificationRef, {
+      message,
+      createdAt: Date.now(),
+      type: 'system_log'
+    });
+  };
+
   const handleRegisterBuddy = (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !rtdb) return;
@@ -144,6 +154,7 @@ export default function DashboardPage() {
     const payload = { ...buddyForm, id: buddyId, registeredAt: Date.now() };
     set(ref(rtdb, `users/${user.uid}/buddies/${buddyId}`), payload)
       .then(() => {
+        logAction(`Enlisted new buddy: ${buddyForm.name}`);
         setIsAddBuddyDialogOpen(false);
         setBuddyForm({ name: '', phoneNumber: '', groups: [] });
         toast({ title: "Buddy Registered" });
@@ -157,6 +168,7 @@ export default function DashboardPage() {
     setRegisterLoading(true);
     update(ref(rtdb, `users/${user.uid}/buddies/${itemToEdit.id}`), itemToEdit)
       .then(() => {
+        logAction(`Updated buddy profile: ${itemToEdit.name}`);
         setIsEditBuddyDialogOpen(false);
         setItemToEdit(null);
         toast({ title: "Buddy Updated" });
@@ -172,6 +184,7 @@ export default function DashboardPage() {
     const payload = { ...nodeForm, id: nodeId, status: 'online', registeredAt: Date.now() };
     set(ref(rtdb, `users/${user.uid}/nodes/${nodeId}`), payload)
       .then(() => {
+        logAction(`Linked new hardware node: ${nodeForm.nodeName}`);
         setIsAddNodeDialogOpen(false);
         setNodeForm({ nodeName: '', hardwareId: '', targetGroups: [] });
         toast({ title: "Node Linked" });
@@ -185,6 +198,7 @@ export default function DashboardPage() {
     setRegisterLoading(true);
     update(ref(rtdb, `users/${user.uid}/nodes/${itemToEdit.id}`), itemToEdit)
       .then(() => {
+        logAction(`Updated node parameters: ${itemToEdit.nodeName}`);
         setIsEditNodeDialogOpen(false);
         setItemToEdit(null);
         toast({ title: "Node Updated" });
@@ -202,6 +216,7 @@ export default function DashboardPage() {
         timestamp: Date.now(),
         triggeredByNode: null 
       });
+      logAction(`SOS Protocol Deactivated for node: ${node.nodeName}`);
       return;
     }
 
@@ -215,6 +230,7 @@ export default function DashboardPage() {
         latitude: lat || null,
         longitude: lng || null,
       });
+      logAction(`SOS Protocol INITIATED from node: ${node.nodeName}`);
     };
 
     if ("geolocation" in navigator) {
@@ -614,6 +630,7 @@ export default function DashboardPage() {
               <Button onClick={() => {
                 if (!user || !newGroupName) return;
                 push(ref(rtdb, `users/${user.uid}/buddyGroups`), { name: newGroupName });
+                logAction(`Created new protocol group: ${newGroupName}`);
                 setNewGroupName("");
               }} className="h-14 w-14 rounded-2xl p-0 shadow-lg bg-primary hover:bg-secondary"><PlusCircle className="h-6 w-6" /></Button>
             </div>
@@ -625,7 +642,10 @@ export default function DashboardPage() {
                     {!DEFAULT_BUDDY_GROUPS.includes(g) && (
                       <Button variant="ghost" size="sm" className="h-10 w-10 rounded-xl text-destructive opacity-0 group-hover/item:opacity-100" onClick={() => {
                         const gId = Object.entries(customGroupsData || {}).find(([k, v]: any) => v.name === g)?.[0];
-                        if (gId) remove(ref(rtdb, `users/${user.uid}/buddyGroups/${gId}`));
+                        if (gId) {
+                          remove(ref(rtdb, `users/${user.uid}/buddyGroups/${gId}`));
+                          logAction(`Removed protocol group: ${g}`);
+                        }
                       }}><Trash2 className="h-4 w-4" /></Button>
                     )}
                   </div>
@@ -647,7 +667,9 @@ export default function DashboardPage() {
             <AlertDialogAction onClick={() => {
               if (!user || !itemToDelete) return;
               const path = itemToDelete.type === 'buddy' ? `users/${user.uid}/buddies/${itemToDelete.id}` : `users/${user.uid}/nodes/${itemToDelete.id}`;
+              const name = itemToDelete.nodeName || itemToDelete.name;
               remove(ref(rtdb, path)).then(() => {
+                logAction(`Purged asset from network: ${name} (${itemToDelete.type})`);
                 setIsDeleteDialogOpen(false);
                 setItemToDelete(null);
                 toast({ title: "Asset Purged" });
