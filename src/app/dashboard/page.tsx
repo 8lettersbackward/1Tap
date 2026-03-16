@@ -74,8 +74,6 @@ export default function DashboardPage() {
   const [buddyForm, setBuddyForm] = useState({
     name: '',
     phoneNumber: '',
-    role: 'Primary',
-    priority: 'High',
     groups: [] as string[]
   });
 
@@ -155,7 +153,7 @@ export default function DashboardPage() {
     set(ref(rtdb, `users/${user.uid}/buddies/${buddyId}`), payload)
       .then(() => {
         setIsAddBuddyDialogOpen(false);
-        setBuddyForm({ name: '', phoneNumber: '', role: 'Primary', priority: 'High', groups: [] });
+        setBuddyForm({ name: '', phoneNumber: '', groups: [] });
         toast({ title: "Buddy Registered" });
       })
       .finally(() => setRegisterLoading(false));
@@ -185,6 +183,19 @@ export default function DashboardPage() {
         setIsAddNodeDialogOpen(false);
         setNodeForm({ nodeName: '', hardwareId: '', targetGroups: [] });
         toast({ title: "Node Armed" });
+      })
+      .finally(() => setRegisterLoading(false));
+  };
+
+  const handleUpdateNode = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !rtdb || !itemToEdit) return;
+    setRegisterLoading(true);
+    update(ref(rtdb, `users/${user.uid}/nodes/${itemToEdit.id}`), itemToEdit)
+      .then(() => {
+        setIsEditNodeDialogOpen(false);
+        setItemToEdit(null);
+        toast({ title: "Node Configuration Updated" });
       })
       .finally(() => setRegisterLoading(false));
   };
@@ -299,7 +310,6 @@ export default function DashboardPage() {
                             <p className="text-lg font-bold">{buddy.name}</p>
                             <p className="text-xs font-mono text-accent/60">{buddy.phoneNumber}</p>
                           </div>
-                          <Badge className="bg-accent/10 text-accent border-accent/20 text-[9px]">{buddy.priority}</Badge>
                         </div>
                         <div className="flex flex-wrap gap-1.5">
                           {buddy.groups?.map((g: string) => (
@@ -337,7 +347,7 @@ export default function DashboardPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {nodes.map(node => (
-                    <Card key={node.id} className="glass-card border-none">
+                    <Card key={node.id} className="glass-card border-none group">
                       <CardHeader className="p-6">
                         <div className="flex justify-between items-center mb-2">
                           <p className="text-lg font-bold">{node.nodeName}</p>
@@ -358,6 +368,11 @@ export default function DashboardPage() {
                           <Zap className="h-4 w-4 mr-2" /> 
                           {sosStatus?.sosTrigger && sosStatus?.triggeredByNode === node.id ? "Reset Alert" : "Trigger SOS"}
                         </Button>
+                        <div className="flex gap-2 pt-4 border-t border-white/5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="sm" className="h-9 rounded-lg text-[10px] font-bold uppercase tracking-widest flex-1" onClick={() => { setItemToView(node); setIsViewItemDialogOpen(true); }}><Eye className="h-3.5 w-3.5 mr-2" /> View</Button>
+                          <Button variant="ghost" size="sm" className="h-9 rounded-lg text-[10px] font-bold uppercase tracking-widest flex-1" onClick={() => { setItemToEdit(node); setIsEditNodeDialogOpen(true); }}><Pencil className="h-3.5 w-3.5 mr-2" /> Edit</Button>
+                          <Button variant="ghost" size="sm" className="h-9 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => { setItemToDelete({ ...node, type: 'node' }); setIsDeleteDialogOpen(true); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
@@ -421,29 +436,6 @@ export default function DashboardPage() {
               <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60">Comms Number</Label>
               <Input value={buddyForm.phoneNumber} onChange={e => setBuddyForm({...buddyForm, phoneNumber: e.target.value})} className="bg-white/5 border-white/10 rounded-xl h-12" required />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60">Operational Role</Label>
-                <Select value={buddyForm.role} onValueChange={v => setBuddyForm({...buddyForm, role: v})}>
-                  <SelectTrigger className="bg-white/5 border-white/10 rounded-xl h-12"><SelectValue /></SelectTrigger>
-                  <SelectContent className="glass-card">
-                    <SelectItem value="Primary">Primary</SelectItem>
-                    <SelectItem value="Secondary">Secondary</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60">Priority</Label>
-                <Select value={buddyForm.priority} onValueChange={v => setBuddyForm({...buddyForm, priority: v})}>
-                  <SelectTrigger className="bg-white/5 border-white/10 rounded-xl h-12"><SelectValue /></SelectTrigger>
-                  <SelectContent className="glass-card">
-                    <SelectItem value="High">High</SelectItem>
-                    <SelectItem value="Medium">Medium</SelectItem>
-                    <SelectItem value="Low">Low</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
             <div className="space-y-1.5">
               <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60">Protocol Groups</Label>
               <div className="grid grid-cols-2 gap-3 p-4 bg-white/5 rounded-xl border border-white/5">
@@ -477,29 +469,6 @@ export default function DashboardPage() {
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60">Comms Number</Label>
                 <Input value={itemToEdit.phoneNumber} onChange={e => setItemToEdit({...itemToEdit, phoneNumber: e.target.value})} className="bg-white/5 border-white/10 rounded-xl h-12" required />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60">Operational Role</Label>
-                  <Select value={itemToEdit.role} onValueChange={v => setItemToEdit({...itemToEdit, role: v})}>
-                    <SelectTrigger className="bg-white/5 border-white/10 rounded-xl h-12"><SelectValue /></SelectTrigger>
-                    <SelectContent className="glass-card">
-                      <SelectItem value="Primary">Primary</SelectItem>
-                      <SelectItem value="Secondary">Secondary</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60">Priority</Label>
-                  <Select value={itemToEdit.priority} onValueChange={v => setItemToEdit({...itemToEdit, priority: v})}>
-                    <SelectTrigger className="bg-white/5 border-white/10 rounded-xl h-12"><SelectValue /></SelectTrigger>
-                    <SelectContent className="glass-card">
-                      <SelectItem value="High">High</SelectItem>
-                      <SelectItem value="Medium">Medium</SelectItem>
-                      <SelectItem value="Low">Low</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60">Protocol Groups</Label>
@@ -554,6 +523,82 @@ export default function DashboardPage() {
               {registerLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Initiate Link"}
             </Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isEditNodeDialogOpen} onOpenChange={setIsEditNodeDialogOpen}>
+        <DialogContent className="glass-card border-none rounded-3xl max-w-md">
+          <DialogHeader><DialogTitle className="text-lg font-bold uppercase tracking-wider">Modify Node</DialogTitle></DialogHeader>
+          {itemToEdit && (
+            <form onSubmit={handleUpdateNode} className="space-y-4 pt-4">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60">Node Alias</Label>
+                <Input value={itemToEdit.nodeName} onChange={e => setItemToEdit({...itemToEdit, nodeName: e.target.value})} className="bg-white/5 border-white/10 rounded-xl h-12" required />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60">Hardware ID</Label>
+                <Input value={itemToEdit.hardwareId} onChange={e => setItemToEdit({...itemToEdit, hardwareId: e.target.value})} className="bg-white/5 border-white/10 rounded-xl h-12" required />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60">Alert Targets</Label>
+                <div className="grid grid-cols-2 gap-3 p-4 bg-white/5 rounded-xl border border-white/5">
+                  {buddyGroups.map(g => (
+                    <div key={g} className="flex items-center gap-2.5">
+                      <Checkbox checked={itemToEdit.targetGroups?.includes(g)} onCheckedChange={() => {
+                        const targets = itemToEdit.targetGroups || [];
+                        const updated = targets.includes(g) ? targets.filter((x: string) => x !== g) : [...targets, g];
+                        setItemToEdit({...itemToEdit, targetGroups: updated});
+                      }} className="rounded-md border-white/20" />
+                      <span className="text-[10px] font-bold opacity-70">{g}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <Button type="submit" className="w-full h-12 rounded-xl font-bold text-xs uppercase tracking-widest" disabled={registerLoading}>
+                {registerLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sync Configuration"}
+              </Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isViewItemDialogOpen} onOpenChange={setIsViewItemDialogOpen}>
+        <DialogContent className="glass-card border-none rounded-3xl max-w-md">
+          <DialogHeader><DialogTitle className="text-lg font-bold uppercase tracking-wider">System Audit</DialogTitle></DialogHeader>
+          {itemToView && (
+            <div className="space-y-6 pt-4">
+              <div className="p-6 bg-white/5 rounded-2xl border border-white/5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent mb-4">Core Metadata</p>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] uppercase font-bold opacity-40">Alias</span>
+                    <span className="text-xs font-bold">{itemToView.nodeName || itemToView.name}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] uppercase font-bold opacity-40">System ID</span>
+                    <span className="text-[10px] font-mono opacity-80">{itemToView.hardwareId || itemToView.id}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] uppercase font-bold opacity-40">Status</span>
+                    <Badge className={cn("text-[9px]", itemToView.status === 'online' ? "bg-accent/20 text-accent" : "bg-muted text-muted-foreground")}>{itemToView.status || 'Active'}</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] uppercase font-bold opacity-40">Enlisted</span>
+                    <span className="text-[10px] opacity-60">{new Date(itemToView.registeredAt).toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6 bg-white/5 rounded-2xl border border-white/5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent mb-4">Protocol Groupings</p>
+                <div className="flex flex-wrap gap-2">
+                  {(itemToView.targetGroups || itemToView.groups || []).map((g: string) => (
+                    <Badge key={g} variant="outline" className="bg-white/5 border-white/10 text-[9px] px-3 py-1 opacity-80">{g}</Badge>
+                  ))}
+                  {(itemToView.targetGroups || itemToView.groups || []).length === 0 && <p className="text-[10px] opacity-40 uppercase font-bold">No active protocols</p>}
+                </div>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
