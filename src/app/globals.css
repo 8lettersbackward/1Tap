@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -23,7 +24,7 @@
     --border: 235 61% 50%;
     --input: 246 87% 15%;
     --ring: 230 84% 60%;
-    --radius: 1.5rem;
+    --radius: 1rem;
   }
 }
 
@@ -38,7 +39,7 @@
 }
 
 .glass-card {
-  @apply backdrop-blur-xl bg-card/20 border border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_8px_32px_rgba(0,0,0,0.3)];
+  @apply backdrop-blur-xl bg-card/20 border border-white/10 shadow-lg;
 }
 
 .neo-blur {

@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Buddy": {
@@ -8,10 +9,12 @@
         "id": { "type": "string" },
         "name": { "type": "string" },
         "phoneNumber": { "type": "string" },
+        "role": { "type": "string", "enum": ["Primary", "Secondary"], "description": "The operational role of this contact." },
+        "priority": { "type": "string", "enum": ["High", "Medium", "Low"], "description": "Alert dispatch priority." },
         "groups": { "type": "array", "items": { "type": "string" }, "description": "The protocol groups this buddy belongs to." },
         "registeredAt": { "type": "number" }
       },
-      "required": ["name", "phoneNumber"]
+      "required": ["name", "phoneNumber", "role", "priority"]
     },
     "SecurityGroup": {
       "title": "Security Protocol Group",
