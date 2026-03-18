@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useUser, useDatabase, useRtdb, useFirebase } from "@/firebase";
@@ -8,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Slider } from "@/components/ui/slider";
 import { 
   Dialog,
   DialogContent,
@@ -39,7 +41,8 @@ import {
   Pencil,
   PlusSquare,
   Eye,
-  Eraser
+  Eraser,
+  Thermometer
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ref, set, push, remove, update } from "firebase/database";
@@ -73,6 +76,7 @@ export default function DashboardPage() {
   const [nodeForm, setNodeForm] = useState({
     nodeName: '',
     hardwareId: '',
+    temperature: 24,
     targetGroups: [] as string[]
   });
 
@@ -194,7 +198,7 @@ export default function DashboardPage() {
       .then(() => {
         logAction(`Armed new hardware node: ${nodeForm.nodeName}`);
         setIsAddNodeDialogOpen(false);
-        setNodeForm({ nodeName: '', hardwareId: '', targetGroups: [] });
+        setNodeForm({ nodeName: '', hardwareId: '', temperature: 24, targetGroups: [] });
         toast({ title: "Node Armed" });
       })
       .finally(() => setRegisterLoading(false));
@@ -212,6 +216,14 @@ export default function DashboardPage() {
         toast({ title: "Node Updated" });
       })
       .finally(() => setRegisterLoading(false));
+  };
+
+  const handleNodeTempAdjust = (node: any, newTemp: number) => {
+    if (!user || !rtdb) return;
+    update(ref(rtdb, `users/${user.uid}/nodes/${node.id}`), { temperature: newTemp })
+      .then(() => {
+        logAction(`Adjusted thermal threshold for ${node.nodeName} to ${newTemp}°C`);
+      });
   };
 
   const triggerNodeAlert = (node: any) => {
@@ -307,7 +319,7 @@ export default function DashboardPage() {
           {activeTab === 'buddies' && (
             <div className="space-y-10">
               <div className="flex items-center justify-between">
-                <h1 className="text-4xl font-bold tracking-tighter">MANAGE BUDDY</h1>
+                <h1 className="text-4xl font-bold tracking-tighter text-white">MANAGE BUDDY</h1>
                 <div className="flex gap-4">
                   <Button onClick={() => setIsAddBuddyDialogOpen(true)} className="rounded-2xl font-bold text-[10px] uppercase tracking-widest h-12 px-8 bg-primary hover:bg-secondary">
                     <UserPlus className="h-4 w-4 mr-2" /> Enlist
@@ -357,7 +369,7 @@ export default function DashboardPage() {
           {activeTab === 'nodes' && (
             <div className="space-y-10">
               <div className="flex items-center justify-between">
-                <h1 className="text-4xl font-bold tracking-tighter">MANAGE NODE</h1>
+                <h1 className="text-4xl font-bold tracking-tighter text-white">MANAGE NODE</h1>
                 <Button onClick={() => setIsAddNodeDialogOpen(true)} className="rounded-2xl font-bold text-[10px] uppercase tracking-widest h-12 px-8 bg-primary hover:bg-secondary">
                   <PlusSquare className="h-4 w-4 mr-2" /> Arm Node
                 </Button>
@@ -380,6 +392,20 @@ export default function DashboardPage() {
                         <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-[0.2em]">ID: {node.hardwareId}</p>
                       </CardHeader>
                       <CardContent className="p-8 pt-0 space-y-6">
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest opacity-40 flex items-center gap-2"><Thermometer className="h-3 w-3" /> Thermal Threshold</Label>
+                            <span className="text-[10px] font-mono font-bold text-secondary">{node.temperature || 24}°C</span>
+                          </div>
+                          <Slider 
+                            defaultValue={[node.temperature || 24]} 
+                            max={60} 
+                            min={0}
+                            step={1} 
+                            onValueCommit={(val) => handleNodeTempAdjust(node, val[0])}
+                            className="py-2"
+                          />
+                        </div>
                         <div className="flex flex-wrap gap-2">
                           {node.targetGroups?.map((g: string) => (
                             <Badge key={g} className="bg-primary/20 border-none text-white text-[9px] uppercase font-bold px-3">{g}</Badge>
@@ -408,7 +434,7 @@ export default function DashboardPage() {
           {activeTab === 'notifications' && (
             <div className="space-y-10">
               <div className="flex items-center justify-between">
-                <h1 className="text-4xl font-bold tracking-tighter">NOTIFICATION</h1>
+                <h1 className="text-4xl font-bold tracking-tighter text-white">NOTIFICATION</h1>
                 {notifications.length > 0 && (
                   <Button 
                     variant="ghost" 
@@ -444,7 +470,7 @@ export default function DashboardPage() {
 
           {activeTab === 'settings' && (
             <div className="max-w-md space-y-10">
-              <h1 className="text-4xl font-bold tracking-tighter">SETTINGS</h1>
+              <h1 className="text-4xl font-bold tracking-tighter text-white">SETTINGS</h1>
               <Card className="glass-card border-none p-10 space-y-8">
                 <div className="p-6 bg-white/5 rounded-2xl border border-white/5">
                   <p className="text-[10px] font-bold text-secondary uppercase tracking-widest mb-2">Auth Identification</p>
@@ -541,6 +567,10 @@ export default function DashboardPage() {
               <Input value={nodeForm.hardwareId} onChange={e => setNodeForm({...nodeForm, hardwareId: e.target.value})} className="bg-white/5 border-white/10 rounded-2xl h-14 text-sm font-mono" required />
             </div>
             <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-widest opacity-40 ml-1">Initial Thermal Threshold (°C)</Label>
+              <Input type="number" value={nodeForm.temperature} onChange={e => setNodeForm({...nodeForm, temperature: parseInt(e.target.value)})} className="bg-white/5 border-white/10 rounded-2xl h-14 text-sm font-bold" />
+            </div>
+            <div className="space-y-2">
               <Label className="text-[10px] font-bold uppercase tracking-widest opacity-40 ml-1">Broadcast Targets</Label>
               <div className="grid grid-cols-2 gap-4 p-6 bg-white/5 rounded-2xl border border-white/5">
                 {buddyGroups.map(g => (
@@ -573,6 +603,10 @@ export default function DashboardPage() {
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold uppercase tracking-widest opacity-40 ml-1">Hardware ID</Label>
                 <Input value={itemToEdit.hardwareId} onChange={e => setItemToEdit({...itemToEdit, hardwareId: e.target.value})} className="bg-white/5 border-white/10 rounded-2xl h-14 text-sm font-mono" required />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest opacity-40 ml-1">Thermal Threshold (°C)</Label>
+                <Input type="number" value={itemToEdit.temperature} onChange={e => setItemToEdit({...itemToEdit, temperature: parseInt(e.target.value)})} className="bg-white/5 border-white/10 rounded-2xl h-14 text-sm font-bold" />
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold uppercase tracking-widest opacity-40 ml-1">Broadcast Targets</Label>
@@ -617,6 +651,12 @@ export default function DashboardPage() {
                   <span className="text-[10px] uppercase font-bold opacity-40 tracking-widest">{itemToView.hardwareId ? 'Hardware ID' : 'Internal ID'}</span>
                   <span className="text-[10px] font-mono text-secondary">{itemToView.hardwareId || itemToView.id}</span>
                 </div>
+                {itemToView.temperature !== undefined && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] uppercase font-bold opacity-40 tracking-widest">Thermal Threshold</span>
+                    <span className="text-[10px] font-mono text-secondary">{itemToView.temperature}°C</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center">
                   <span className="text-[10px] uppercase font-bold opacity-40 tracking-widest">Current Status</span>
                   <Badge className={cn("text-[9px] uppercase font-bold", itemToView.status === 'online' ? "bg-secondary/20 text-secondary" : "bg-muted/20 text-muted-foreground")}>{itemToView.status || 'Active'}</Badge>

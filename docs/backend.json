@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Buddy": {
@@ -31,6 +32,7 @@
         "nodeName": { "type": "string" },
         "hardwareId": { "type": "string" },
         "status": { "type": "string", "enum": ["online", "offline", "error"] },
+        "temperature": { "type": "number" },
         "targetGroups": { "type": "array", "items": { "type": "string" } },
         "registeredAt": { "type": "number" }
       },
