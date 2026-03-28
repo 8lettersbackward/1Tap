@@ -438,7 +438,7 @@ export default function DashboardPage() {
       </main>
 
       <Dialog open={isAddBuddyDialogOpen} onOpenChange={setIsAddBuddyDialogOpen}>
-        <DialogContent className="glass-card border-none rounded-[2rem] max-w-md p-10">
+        <DialogContent className="bg-white border border-primary/10 shadow-xl rounded-[2rem] max-w-md p-10">
           <DialogHeader><DialogTitle className="text-xl font-bold uppercase tracking-widest text-secondary mb-6">Enlist Buddy</DialogTitle></DialogHeader>
           <form onSubmit={handleRegisterBuddy} className="space-y-6">
             <div className="space-y-2">
@@ -471,7 +471,7 @@ export default function DashboardPage() {
       </Dialog>
 
       <Dialog open={isEditBuddyDialogOpen} onOpenChange={setIsEditBuddyDialogOpen}>
-        <DialogContent className="glass-card border-none rounded-[2rem] max-w-md p-10">
+        <DialogContent className="bg-white border border-primary/10 shadow-xl rounded-[2rem] max-w-md p-10">
           <DialogHeader><DialogTitle className="text-xl font-bold uppercase tracking-widest text-secondary mb-6">Edit Buddy</DialogTitle></DialogHeader>
           {itemToEdit && (
             <form onSubmit={handleUpdateBuddy} className="space-y-6">
@@ -507,7 +507,7 @@ export default function DashboardPage() {
       </Dialog>
 
       <Dialog open={isAddNodeDialogOpen} onOpenChange={setIsAddNodeDialogOpen}>
-        <DialogContent className="glass-card border-none rounded-[2rem] max-w-md p-10">
+        <DialogContent className="bg-white border border-primary/10 shadow-xl rounded-[2rem] max-w-md p-10">
           <DialogHeader><DialogTitle className="text-xl font-bold uppercase tracking-widest text-secondary mb-6">Arm Node</DialogTitle></DialogHeader>
           <form onSubmit={handleRegisterNode} className="space-y-6">
             <div className="space-y-2">
@@ -544,7 +544,7 @@ export default function DashboardPage() {
       </Dialog>
 
       <Dialog open={isEditNodeDialogOpen} onOpenChange={setIsEditNodeDialogOpen}>
-        <DialogContent className="glass-card border-none rounded-[2rem] max-w-md p-10">
+        <DialogContent className="bg-white border border-primary/10 shadow-xl rounded-[2rem] max-w-md p-10">
           <DialogHeader><DialogTitle className="text-xl font-bold uppercase tracking-widest text-secondary mb-6">Edit Node</DialogTitle></DialogHeader>
           {itemToEdit && (
             <form onSubmit={handleUpdateNode} className="space-y-6">
@@ -584,7 +584,7 @@ export default function DashboardPage() {
       </Dialog>
 
       <Dialog open={isViewItemDialogOpen} onOpenChange={setIsViewItemDialogOpen}>
-        <DialogContent className="glass-card border-none rounded-[2rem] max-w-md p-10">
+        <DialogContent className="bg-white border border-primary/10 shadow-xl rounded-[2rem] max-w-md p-10">
           <DialogHeader><DialogTitle className="text-xl font-bold uppercase tracking-widest text-secondary mb-6">Asset Overview</DialogTitle></DialogHeader>
           {itemToView && (
             <div className="space-y-8">
@@ -633,7 +633,7 @@ export default function DashboardPage() {
       </Dialog>
 
       <Dialog open={isManageGroupsDialogOpen} onOpenChange={setIsManageGroupsDialogOpen}>
-        <DialogContent className="glass-card border-none rounded-[2rem] max-w-md p-10">
+        <DialogContent className="bg-white border border-primary/10 shadow-xl rounded-[2rem] max-w-md p-10">
           <DialogHeader><DialogTitle className="text-xl font-bold uppercase tracking-widest text-secondary mb-6">Safety Protocols</DialogTitle></DialogHeader>
           <div className="space-y-8">
             <div className="flex gap-3">
@@ -668,7 +668,7 @@ export default function DashboardPage() {
       </Dialog>
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="glass-card border-none rounded-[2rem] p-10">
+        <AlertDialogContent className="bg-white border border-primary/10 shadow-xl rounded-[2rem] p-10">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-xl font-bold uppercase tracking-widest text-destructive mb-4">Purge Asset?</AlertDialogTitle>
             <AlertDialogDescription className="text-sm font-medium leading-relaxed">This asset will be permanently erased from the terminal hub and protocol networks.</AlertDialogDescription>
