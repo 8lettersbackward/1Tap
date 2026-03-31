@@ -92,9 +92,11 @@ export default function DashboardPage() {
   const [isEditNodeDialogOpen, setIsEditNodeDialogOpen] = useState(false);
   const [isViewItemDialogOpen, setIsViewItemDialogOpen] = useState(false);
   const [isManageGroupsDialogOpen, setIsManageGroupsDialogOpen] = useState(false);
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<any>(null);
   const [itemToView, setItemToView] = useState<any>(null);
   const [itemToEdit, setItemToEdit] = useState<any>(null);
+  const [mapNotification, setMapNotification] = useState<any>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
 
@@ -458,6 +460,21 @@ export default function DashboardPage() {
                             <Button size="sm" onClick={() => { setActiveSosAlert(n); setIsSosMapOpen(true); }} className="h-8 rounded-lg bg-destructive text-[9px] font-bold uppercase tracking-widest px-6 shadow-lg shadow-destructive/20 text-white">View on Map</Button>
                           </div>
                         )}
+                        {n.latitude && n.longitude && n.type !== 'sos' && (
+                          <div className="ml-9 mb-4">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="h-8 rounded-xl text-[9px] font-bold uppercase tracking-widest px-6 border-primary/20 hover:bg-primary/5"
+                              onClick={() => {
+                                setMapNotification(n);
+                                setIsMapModalOpen(true);
+                              }}
+                            >
+                              <MapPin className="h-3.5 w-3.5 mr-2" /> View
+                            </Button>
+                          </div>
+                        )}
                         <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold ml-9">{new Date(n.createdAt).toLocaleDateString()}</p>
                       </div>
                     ))
@@ -483,6 +500,32 @@ export default function DashboardPage() {
           )}
         </div>
       </main>
+
+      <Dialog open={isMapModalOpen} onOpenChange={setIsMapModalOpen}>
+        <DialogContent className="bg-white border-none shadow-2xl rounded-[2rem] max-w-3xl p-0 overflow-hidden">
+          <DialogHeader className="p-8 border-b border-primary/5">
+            <DialogTitle className="text-xl font-bold uppercase tracking-widest text-secondary">Spatial Coordinate Intercept</DialogTitle>
+          </DialogHeader>
+          <div className="p-0">
+            {mapNotification && (
+              <iframe
+                width="100%"
+                height="400"
+                style={{ border: 0 }}
+                loading="lazy"
+                allowFullScreen
+                referrerPolicy="no-referrer-when-downgrade"
+                src={`https://www.google.com/maps?q=${mapNotification.latitude},${mapNotification.longitude}&output=embed`}
+              ></iframe>
+            )}
+          </div>
+          <div className="p-8">
+             <Button onClick={() => setIsMapModalOpen(false)} className="w-full h-14 rounded-2xl font-bold text-[10px] uppercase tracking-widest shadow-lg bg-primary hover:bg-secondary">
+               Acknowledge Signal
+             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isSosMapOpen} onOpenChange={setIsSosMapOpen}>
         <DialogContent className="bg-white border-2 border-destructive/20 shadow-2xl rounded-[2rem] max-w-2xl p-0 overflow-hidden">
