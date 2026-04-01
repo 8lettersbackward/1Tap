@@ -581,18 +581,18 @@ export default function DashboardPage() {
 
       <Dialog open={isLiveMapOpen} onOpenChange={setIsLiveMapOpen}>
         <DialogContent className="bg-white border-2 border-secondary/20 shadow-2xl rounded-[2rem] max-w-2xl p-0 overflow-hidden">
-          <div className="p-10 border-b border-secondary/5 bg-secondary/5">
+          <DialogHeader className="p-10 border-b border-secondary/5 bg-secondary/5">
              <div className="flex justify-between items-center">
                <div className="flex items-center gap-4">
                   <Radar className="h-8 w-8 text-secondary animate-pulse" />
                   <div>
-                    <h2 className="text-2xl font-bold text-secondary uppercase tracking-tighter">Live Asset Tracking</h2>
+                    <DialogTitle className="text-2xl font-bold text-secondary uppercase tracking-tighter">Live Asset Tracking</DialogTitle>
                     <p className="text-[10px] font-bold uppercase tracking-widest opacity-60">ID: {trackSecretId}</p>
                   </div>
                </div>
                <Badge className="bg-secondary text-white border-none text-[10px] font-bold uppercase px-4 py-2 rounded-xl">Signal Locked</Badge>
              </div>
-          </div>
+          </DialogHeader>
           <div className="p-10 space-y-8">
             <div className="relative rounded-2xl overflow-hidden border border-secondary/10 shadow-inner">
                <SOSMap 
@@ -644,18 +644,18 @@ export default function DashboardPage() {
 
       <Dialog open={isSosMapOpen} onOpenChange={setIsSosMapOpen}>
         <DialogContent className="bg-white border-2 border-destructive/20 shadow-2xl rounded-[2rem] max-w-2xl p-0 overflow-hidden">
-          <div className="p-10 border-b border-destructive/5 bg-destructive/5">
+          <DialogHeader className="p-10 border-b border-destructive/5 bg-destructive/5">
              <div className="flex justify-between items-center">
                <div className="flex items-center gap-4">
                   <AlertTriangle className="h-8 w-8 text-destructive animate-bounce" />
                   <div>
-                    <h2 className="text-2xl font-bold text-destructive uppercase tracking-tighter">Tactical SOS Intercept</h2>
+                    <DialogTitle className="text-2xl font-bold text-destructive uppercase tracking-tighter">Tactical SOS Intercept</DialogTitle>
                     <p className="text-[10px] font-bold uppercase tracking-widest opacity-60">Master Signal: {activeSosAlert?.nodeName || 'Hardware Node'}</p>
                   </div>
                </div>
                <Badge className="bg-destructive text-white border-none text-[10px] font-bold uppercase px-4 py-2 rounded-xl animate-pulse">Critical Alert</Badge>
              </div>
-          </div>
+          </DialogHeader>
           <div className="p-10 space-y-8">
             <div className="grid grid-cols-2 gap-8">
                <div className="space-y-2">
