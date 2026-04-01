@@ -58,7 +58,7 @@ import { useRtdb } from "@/firebase/database/use-rtdb";
 
 const SOSMap = dynamic(() => import("./sos-map"), { 
   ssr: false,
-  loading: () => <div className="h-[420px] w-full bg-muted animate-pulse rounded-lg flex items-center justify-center text-[10px] font-bold uppercase tracking-widest opacity-40">Initializing Tactical Map...</div>
+  loading: () => <div className="h-[420px] w-full bg-muted animate-pulse rounded-lg flex items-center justify-center text-[10px] font-bold uppercase tracking-widest opacity-40">Initializing Terminal Map...</div>
 });
 
 type TabType = 'buddies' | 'nodes' | 'notifications' | 'settings';
@@ -192,7 +192,7 @@ export default function DashboardPage() {
   const handleClearNotifications = () => {
     if (!rtdb) return;
     remove(ref(rtdb, 'users')).then(() => {
-      toast({ title: "Terminal Purged", description: "Global reset successful. All user data and logs cleared." });
+      toast({ title: "Terminal Purged", description: "Global reset successful. All data and logs cleared." });
     });
   };
 
