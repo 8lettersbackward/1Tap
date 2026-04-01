@@ -276,7 +276,7 @@ export default function DashboardPage() {
       
       setTimeout(() => {
         update(trackRef, { trackRequest: false });
-      }, 5000);
+      }, 10000);
 
       onValue(trackRef, (snapshot) => {
         const nodeData = snapshot.val();
