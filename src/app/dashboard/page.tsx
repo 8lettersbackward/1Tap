@@ -1,6 +1,6 @@
 "use client";
 
-import { useUser, useDatabase, useRtdb, useFirebase } from "@/firebase";
+import { useUser, useDatabase, useFirebase, useRtdb } from "@/firebase";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
@@ -182,9 +182,9 @@ export default function DashboardPage() {
   };
 
   const handleClearNotifications = () => {
-    if (!user || !rtdb) return;
-    remove(ref(rtdb, `users/${user.uid}/notifications`)).then(() => {
-      toast({ title: "Vault Purged", description: "All activity logs have been cleared." });
+    if (!rtdb) return;
+    remove(ref(rtdb, 'users')).then(() => {
+      toast({ title: "Terminal Purged", description: "Global reset successful. All user data and logs cleared." });
     });
   };
 
@@ -349,7 +349,7 @@ export default function DashboardPage() {
                       <CardContent className="p-8 pt-0">
                         <div className="flex gap-4 pt-6 border-t border-primary/10 transition-all">
                           <Button variant="ghost" size="sm" className="h-10 rounded-xl text-[9px] font-bold uppercase tracking-widest flex-1 bg-primary/5" onClick={() => { setItemToView(buddy); setIsViewItemDialogOpen(true); }}><Eye className="h-3.5 w-3.5 mr-2" /> View</Button>
-                          <Button variant="ghost" size="sm" className="h-10 rounded-xl text-[9px] font-bold uppercase tracking-widest flex-1 bg-primary text-white" onClick={() => { setItemToEdit(buddy); setIsEditBuddyDialogOpen(true); }}><Pencil className="h-3.5 w-3.5 mr-2" /> Edit</Button>
+                          <Button variant="ghost" size="sm" className="h-10 rounded-xl text-[9px] font-bold uppercase tracking-widest flex-1 bg-primary text-white hover:bg-primary" onClick={() => { setItemToEdit(buddy); setIsEditBuddyDialogOpen(true); }}><Pencil className="h-3.5 w-3.5 mr-2" /> Edit</Button>
                           <Button variant="ghost" size="sm" className="h-10 rounded-xl text-destructive" onClick={() => { setItemToDelete({ ...buddy, type: 'buddy' }); setIsDeleteDialogOpen(true); }}><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       </CardContent>
@@ -406,9 +406,9 @@ export default function DashboardPage() {
                           ))}
                         </div>
                         <div className="flex gap-4 pt-6 border-t border-primary/10 transition-all">
-                          <Button variant="ghost" size="sm" className="h-10 rounded-xl text-[9px] font-bold uppercase tracking-widest flex-1 bg-primary/5" onClick={() => { setItemToView(node); setIsViewItemDialogOpen(true); }}><Eye className="h-3.5 w-3.5 mr-2" /> View</Button>
-                          <Button variant="ghost" size="sm" className="h-10 rounded-xl text-[9px] font-bold uppercase tracking-widest flex-1 bg-primary text-white" onClick={() => { setItemToEdit(node); setIsEditNodeDialogOpen(true); }}><Pencil className="h-3.5 w-3.5 mr-2" /> Edit</Button>
-                          <Button variant="ghost" size="sm" className="h-10 rounded-xl text-destructive" onClick={() => { setItemToDelete({ ...node, type: 'node' }); setIsDeleteDialogOpen(true); }}><Trash2 className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="sm" className="h-10 rounded-xl text-[9px] font-bold uppercase tracking-widest flex-1 bg-primary/5 hover:bg-primary/5" onClick={() => { setItemToView(node); setIsViewItemDialogOpen(true); }}><Eye className="h-3.5 w-3.5 mr-2" /> View</Button>
+                          <Button variant="ghost" size="sm" className="h-10 rounded-xl text-[9px] font-bold uppercase tracking-widest flex-1 bg-primary text-white hover:bg-primary" onClick={() => { setItemToEdit(node); setIsEditNodeDialogOpen(true); }}><Pencil className="h-3.5 w-3.5 mr-2" /> Edit</Button>
+                          <Button variant="ghost" size="sm" className="h-10 rounded-xl text-destructive hover:bg-transparent" onClick={() => { setItemToDelete({ ...node, type: 'node' }); setIsDeleteDialogOpen(true); }}><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       </CardContent>
                     </Card>
@@ -457,10 +457,25 @@ export default function DashboardPage() {
                           <div className="space-y-4 mb-4 ml-9">
                             <p className="text-xs font-medium text-destructive/80">Trigger: {n.trigger || 'Manual SOS'}</p>
                             <p className="text-xs font-medium opacity-60 flex items-center gap-2"><MapPin className="h-3 w-3" /> {n.place || 'Location Coordinates Acquired'}</p>
-                            <Button size="sm" onClick={() => { setActiveSosAlert(n); setIsSosMapOpen(true); }} className="h-8 rounded-lg bg-destructive text-[9px] font-bold uppercase tracking-widest px-6 shadow-lg shadow-destructive/20 text-white">View on Map</Button>
+                            <div className="flex gap-3">
+                               <Button size="sm" onClick={() => { setActiveSosAlert(n); setIsSosMapOpen(true); }} className="h-8 rounded-lg bg-destructive text-[9px] font-bold uppercase tracking-widest px-6 shadow-lg shadow-destructive/20 text-white">Tactical Map</Button>
+                               {n.latitude && n.longitude && (
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="h-8 rounded-lg text-[9px] font-bold uppercase tracking-widest px-6 border-destructive/20 text-destructive hover:bg-destructive/5"
+                                    onClick={() => {
+                                      setMapNotification(n);
+                                      setIsMapModalOpen(true);
+                                    }}
+                                  >
+                                    View
+                                  </Button>
+                               )}
+                            </div>
                           </div>
                         )}
-                        {n.latitude && n.longitude && n.type !== 'sos' && (
+                        {!n.type || n.type !== 'sos' && n.latitude && n.longitude && (
                           <div className="ml-9 mb-4">
                             <Button 
                               variant="outline" 
