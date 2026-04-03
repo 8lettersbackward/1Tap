@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useUser, useDatabase, useFirebase } from "@/firebase";
@@ -74,6 +75,7 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<TabType>('buddies');
   const [hasMounted, setHasMounted] = useState(false);
   const [registerLoading, setRegisterLoading] = useState(false);
+  const [vaultClearedAt, setVaultClearedAt] = useState(0);
 
   const [buddyForm, setBuddyForm] = useState({
     name: '',
@@ -119,6 +121,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     setHasMounted(true);
+    const savedClearedAt = localStorage.getItem('vaultClearedAt');
+    if (savedClearedAt) {
+      setVaultClearedAt(parseInt(savedClearedAt));
+    }
     if (!userLoading && !user) {
       router.push("/login");
     }
@@ -147,8 +153,9 @@ export default function DashboardPage() {
 
       if (alert && alert.type === "sos" && alertId !== lastProcessedSosRef.current) {
         lastProcessedSosRef.current = alertId;
-        if (Date.now() - (alert.createdAt || 0) < 30000) {
-          setActiveSosAlert({ ...alert, id: alertId });
+        const createdAt = alert.createdAt || alert.timestamp || 0;
+        if (Date.now() - createdAt < 30000) {
+          setActiveSosAlert({ ...alert, id: alertId, createdAt });
           setIsSosMapOpen(true);
         }
       }
@@ -175,9 +182,13 @@ export default function DashboardPage() {
   const notifications = useMemo(() => {
     if (!notificationsData) return [];
     return Object.entries(notificationsData)
-      .map(([id, val]: [string, any]) => ({ ...val, id }))
-      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  }, [notificationsData]);
+      .map(([id, val]: [string, any]) => {
+        const createdAt = val.createdAt || val.timestamp || 0;
+        return { ...val, id, createdAt };
+      })
+      .filter(n => n.createdAt > vaultClearedAt)
+      .sort((a, b) => b.createdAt - a.createdAt);
+  }, [notificationsData, vaultClearedAt]);
 
   const logAction = (message: string, type: string = 'system_log') => {
     if (!user || !rtdb) return;
@@ -190,10 +201,10 @@ export default function DashboardPage() {
   };
 
   const handleClearNotifications = () => {
-    if (!rtdb) return;
-    remove(ref(rtdb, 'users')).then(() => {
-      toast({ title: "Terminal Purged", description: "Global reset successful. All data and logs cleared." });
-    });
+    const now = Date.now();
+    setVaultClearedAt(now);
+    localStorage.setItem('vaultClearedAt', now.toString());
+    toast({ title: "Terminal Purged", description: "Interface logs cleared locally." });
   };
 
   const handleRegisterBuddy = (e: React.FormEvent) => {
@@ -294,6 +305,18 @@ export default function DashboardPage() {
     }).finally(() => setRegisterLoading(false));
   };
 
+  const safeFormatTime = (ts: any) => {
+    if (!ts) return "---";
+    const d = new Date(ts);
+    return isNaN(d.getTime()) ? "---" : d.toLocaleTimeString();
+  };
+
+  const safeFormatDate = (ts: any) => {
+    if (!ts) return "---";
+    const d = new Date(ts);
+    return isNaN(d.getTime()) ? "---" : d.toLocaleDateString();
+  };
+
   if (userLoading || !hasMounted) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#e1f1fd]">
@@ -387,7 +410,7 @@ export default function DashboardPage() {
                       <CardContent className="p-8 pt-0">
                         <div className="flex gap-4 pt-6 border-t border-primary/10">
                           <Button variant="ghost" size="sm" className="h-10 rounded-xl text-[9px] font-bold uppercase tracking-widest flex-1 bg-primary/5" onClick={() => { setItemToView(buddy); setIsViewItemDialogOpen(true); }}><Eye className="h-3.5 w-3.5 mr-2" /> View</Button>
-                          <Button variant="ghost" size="sm" className="h-10 rounded-xl text-[9px] font-bold uppercase tracking-widest flex-1 bg-primary text-white hover:bg-primary" onClick={() => { setItemToEdit(buddy); setIsEditBuddyDialogOpen(true); }}><Pencil className="h-3.5 w-3.5 mr-2" /> Edit</Button>
+                          <Button variant="ghost" size="sm" className="h-10 rounded-xl text-[9px] font-bold uppercase tracking-widest flex-1 bg-primary text-white" onClick={() => { setItemToEdit(buddy); setIsEditBuddyDialogOpen(true); }}><Pencil className="h-3.5 w-3.5 mr-2" /> Edit</Button>
                           <Button variant="ghost" size="sm" className="h-10 rounded-xl text-destructive" onClick={() => { setItemToDelete({ ...buddy, type: 'buddy' }); setIsDeleteDialogOpen(true); }}><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       </CardContent>
@@ -448,7 +471,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="flex flex-wrap gap-4 pt-6 border-t border-primary/10">
                           <Button variant="ghost" size="sm" className="h-10 rounded-xl text-[9px] font-bold uppercase tracking-widest flex-1 bg-primary/5" onClick={() => { setItemToView(node); setIsViewItemDialogOpen(true); }}><Eye className="h-3.5 w-3.5 mr-2" /> View</Button>
-                          <Button variant="ghost" size="sm" className="h-10 rounded-xl text-[9px] font-bold uppercase tracking-widest flex-1 bg-primary text-white hover:bg-primary" onClick={() => { setItemToEdit(node); setIsEditNodeDialogOpen(true); }}><Pencil className="h-3.5 w-3.5 mr-2" /> Edit</Button>
+                          <Button variant="ghost" size="sm" className="h-10 rounded-xl text-[9px] font-bold uppercase tracking-widest flex-1 bg-primary text-white" onClick={() => { setItemToEdit(node); setIsEditNodeDialogOpen(true); }}><Pencil className="h-3.5 w-3.5 mr-2" /> Edit</Button>
                           <Button variant="ghost" size="sm" className="h-10 rounded-xl text-[9px] font-bold uppercase tracking-widest flex-1 bg-secondary text-white hover:bg-secondary" onClick={() => { setTrackSecretId(node.hardwareId || ""); setIsTrackDialogOpen(true); }}><Radar className="h-3.5 w-3.5 mr-2" /> Track</Button>
                           <Button variant="ghost" size="sm" className="h-10 rounded-xl text-destructive" onClick={() => { setItemToDelete({ ...node, type: 'node' }); setIsDeleteDialogOpen(true); }}><Trash2 className="h-4 w-4" /></Button>
                         </div>
@@ -492,7 +515,7 @@ export default function DashboardPage() {
                             </p>
                           </div>
                           <Badge variant="outline" className={cn("text-[9px] font-bold px-3 bg-white/50", n.type === 'sos' ? "border-destructive/40 text-destructive" : "border-secondary/40 text-secondary")}>
-                            {new Date(n.createdAt).toLocaleTimeString()}
+                            {safeFormatTime(n.createdAt)}
                           </Badge>
                         </div>
                         {n.type === 'sos' && (
@@ -532,7 +555,7 @@ export default function DashboardPage() {
                             </Button>
                           </div>
                         )}
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold ml-9">{new Date(n.createdAt).toLocaleDateString()}</p>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold ml-9">{safeFormatDate(n.createdAt)}</p>
                       </div>
                     ))
                   )}
@@ -876,7 +899,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-[10px] uppercase font-bold opacity-40 tracking-widest">Link Created</span>
-                  <span className="text-[10px] opacity-60 font-bold">{new Date(itemToView.registeredAt).toLocaleString()}</span>
+                  <span className="text-[10px] opacity-60 font-bold">{safeFormatDate(itemToView.registeredAt)} {safeFormatTime(itemToView.registeredAt)}</span>
                 </div>
               </div>
               <div className="p-8 bg-primary/5 rounded-3xl border border-primary/10">
