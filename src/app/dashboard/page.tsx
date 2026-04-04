@@ -297,7 +297,6 @@ export default function DashboardPage() {
     setRegisterLoading(true);
     
     try {
-      // Guardian search across all users
       const usersRef = ref(rtdb, 'users');
       const snapshot = await get(usersRef);
       const allUsers = snapshot.val();
@@ -336,7 +335,6 @@ export default function DashboardPage() {
 
         logAction(`Guardian Signal Intercept initiated for ID: ${trackSecretId}`);
         
-        // Auto reset trackRequest
         setTimeout(() => {
           update(nodeRef, { trackRequest: false });
         }, 10000);
@@ -386,13 +384,18 @@ export default function DashboardPage() {
 
   if (!user) return null;
 
-  const navItems = [
-    ...(userRole === 'guardian' ? [{ id: 'guardian', label: 'OVERWATCH', icon: ShieldAlert }] : []),
-    { id: 'buddies', label: 'BUDDIES', icon: Smartphone },
-    { id: 'nodes', label: 'NODES', icon: Cpu },
-    { id: 'notifications', label: 'LOGS', icon: Bell },
-    { id: 'settings', label: 'PROFILE', icon: Settings },
-  ] as const;
+  const navItems = userRole === 'guardian' 
+    ? [
+        { id: 'guardian', label: 'OVERWATCH', icon: ShieldAlert },
+        { id: 'notifications', label: 'LOGS', icon: Bell },
+        { id: 'settings', label: 'PROFILE', icon: Settings },
+      ]
+    : [
+        { id: 'buddies', label: 'BUDDIES', icon: Smartphone },
+        { id: 'nodes', label: 'NODES', icon: Cpu },
+        { id: 'notifications', label: 'LOGS', icon: Bell },
+        { id: 'settings', label: 'PROFILE', icon: Settings },
+      ];
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-[#e1f1fd] text-[#12086F]">
@@ -480,7 +483,7 @@ export default function DashboardPage() {
              </div>
           )}
 
-          {activeTab === 'buddies' && (
+          {activeTab === 'buddies' && userRole !== 'guardian' && (
             <div className="space-y-10">
               <div className="flex items-center justify-between">
                 <h1 className="text-4xl font-bold tracking-tighter text-[#12086F]">MANAGE BUDDIES</h1>
@@ -530,7 +533,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {activeTab === 'nodes' && (
+          {activeTab === 'nodes' && userRole !== 'guardian' && (
             <div className="space-y-10">
               <div className="flex items-center justify-between">
                 <h1 className="text-4xl font-bold tracking-tighter text-[#12086F]">MANAGE NODES</h1>
