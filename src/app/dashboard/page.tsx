@@ -387,13 +387,13 @@ export default function DashboardPage() {
   const navItems = userRole === 'guardian' 
     ? [
         { id: 'guardian', label: 'TRACK', icon: ShieldAlert },
-        { id: 'notifications', label: 'LOGS', icon: Bell },
+        { id: 'notifications', label: 'NOTIFICATION', icon: Bell },
         { id: 'settings', label: 'PROFILE', icon: Settings },
       ]
     : [
         { id: 'buddies', label: 'MANAGE BUDDIES', icon: Smartphone },
         { id: 'nodes', label: 'MANAGE NODES', icon: Cpu },
-        { id: 'notifications', label: 'LOGS', icon: Bell },
+        { id: 'notifications', label: 'NOTIFICATION', icon: Bell },
         { id: 'settings', label: 'PROFILE', icon: Settings },
       ];
 
@@ -597,7 +597,7 @@ export default function DashboardPage() {
           {activeTab === 'notifications' && (
             <div className="space-y-10">
               <div className="flex items-center justify-between">
-                <h1 className="text-4xl font-bold tracking-tighter text-[#12086F]">NOTIFICATION LOGS</h1>
+                <h1 className="text-4xl font-bold tracking-tighter text-[#12086F]">NOTIFICATIONS</h1>
                 {notifications.length > 0 && (
                   <Button 
                     variant="ghost" 
