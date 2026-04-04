@@ -325,7 +325,12 @@ export default function DashboardPage() {
 
       if (foundNode && foundUserId && foundNodeKey) {
         const nodeRef = ref(rtdb, `users/${foundUserId}/nodes/${foundNodeKey}`);
-        await update(nodeRef, { trackRequest: true });
+        
+        // SECURE INTERCEPT: Write trackRequest and trackRequester
+        await update(nodeRef, { 
+          trackRequest: true,
+          trackRequester: user.uid 
+        });
         
         setTrackResult({
           id: trackSecretId,
@@ -335,8 +340,12 @@ export default function DashboardPage() {
 
         logAction(`Guardian Signal Intercept initiated for ID: ${trackSecretId}`);
         
+        // Signal cleanup after 10s
         setTimeout(() => {
-          update(nodeRef, { trackRequest: false });
+          update(nodeRef, { 
+            trackRequest: false, 
+            trackRequester: null 
+          });
         }, 10000);
 
         onValue(nodeRef, (snapshot) => {
