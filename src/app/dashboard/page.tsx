@@ -2,7 +2,7 @@
 "use client";
 
 import { useUser, useDatabase, useFirebase } from "@/firebase";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -45,10 +45,11 @@ import {
   PlusCircle,
   MapPin,
   AlertTriangle,
-  Radar
+  Radar,
+  ShieldAlert
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ref, set, push, remove, update, onChildAdded, off, onValue } from "firebase/database";
+import { ref, set, push, remove, update, onChildAdded, off, onValue, get } from "firebase/database";
 import { signOut } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -61,7 +62,7 @@ const SOSMap = dynamic(() => import("./sos-map"), {
   loading: () => <div className="h-[420px] w-full bg-muted animate-pulse rounded-lg flex items-center justify-center text-[10px] font-bold uppercase tracking-widest opacity-40">Initializing Terminal Map...</div>
 });
 
-type TabType = 'buddies' | 'nodes' | 'notifications' | 'settings';
+type TabType = 'buddies' | 'nodes' | 'notifications' | 'settings' | 'guardian';
 
 const DEFAULT_BUDDY_GROUPS = ["Family", "Friend", "Close Friend"];
 
@@ -70,12 +71,14 @@ export default function DashboardPage() {
   const { auth } = useFirebase();
   const rtdb = useDatabase();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   
   const [activeTab, setActiveTab] = useState<TabType>('buddies');
   const [hasMounted, setHasMounted] = useState(false);
   const [registerLoading, setRegisterLoading] = useState(false);
   const [vaultClearedAt, setVaultClearedAt] = useState(0);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   const [buddyForm, setBuddyForm] = useState({
     name: '',
@@ -93,6 +96,7 @@ export default function DashboardPage() {
 
   const [isTrackDialogOpen, setIsTrackDialogOpen] = useState(false);
   const [trackSecretId, setTrackSecretId] = useState("");
+  const [trackResult, setTrackResult] = useState<any>(null);
   const [trackingLocation, setTrackingLocation] = useState<any>(null);
   const [isLiveMapOpen, setIsLiveMapOpen] = useState(false);
 
@@ -128,7 +132,18 @@ export default function DashboardPage() {
     if (!userLoading && !user) {
       router.push("/login");
     }
-  }, [user, userLoading, router]);
+    
+    if (user && rtdb) {
+      const profileRef = ref(rtdb, `users/${user.uid}/profile`);
+      get(profileRef).then(snapshot => {
+        const profile = snapshot.val();
+        setUserRole(profile?.role || 'user');
+        if (profile?.role === 'guardian') {
+          setActiveTab('guardian');
+        }
+      });
+    }
+  }, [user, userLoading, router, rtdb]);
 
   const groupsRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/buddyGroups`) : null, [rtdb, user]);
   const { data: customGroupsData } = useRtdb(groupsRef);
@@ -275,34 +290,78 @@ export default function DashboardPage() {
       });
   };
 
-  const handleStartTracking = (e: React.FormEvent) => {
+  const handleStartTracking = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !rtdb || !trackSecretId) return;
     
     setRegisterLoading(true);
-    const trackRef = ref(rtdb, `users/${user.uid}/nodes/${trackSecretId}`);
     
-    update(trackRef, { trackRequest: true }).then(() => {
-      logAction(`Initiated hardware tracking protocol for ID: ${trackSecretId}`);
+    try {
+      // Guardian search across all users
+      const usersRef = ref(rtdb, 'users');
+      const snapshot = await get(usersRef);
+      const allUsers = snapshot.val();
       
-      setTimeout(() => {
-        update(trackRef, { trackRequest: false });
-      }, 10000);
+      let foundNode = null;
+      let foundUserId = null;
+      let foundNodeKey = null;
 
-      onValue(trackRef, (snapshot) => {
-        const nodeData = snapshot.val();
-        if (nodeData && nodeData.latitude && nodeData.longitude) {
-          setTrackingLocation({
-            latitude: nodeData.latitude,
-            longitude: nodeData.longitude
-          });
-          setIsLiveMapOpen(true);
-          setIsTrackDialogOpen(false);
+      if (allUsers) {
+        for (const uid in allUsers) {
+          const userNodes = allUsers[uid].nodes;
+          if (userNodes) {
+            for (const nKey in userNodes) {
+              const n = userNodes[nKey];
+              if (n.hardwareId === trackSecretId || n.id === trackSecretId || nKey === trackSecretId) {
+                foundNode = n;
+                foundUserId = uid;
+                foundNodeKey = nKey;
+                break;
+              }
+            }
+          }
+          if (foundNode) break;
         }
-      });
-      
-      toast({ title: "Tracking Protocol Active", description: "Awaiting signal from hardware node." });
-    }).finally(() => setRegisterLoading(false));
+      }
+
+      if (foundNode && foundUserId && foundNodeKey) {
+        const nodeRef = ref(rtdb, `users/${foundUserId}/nodes/${foundNodeKey}`);
+        await update(nodeRef, { trackRequest: true });
+        
+        setTrackResult({
+          id: trackSecretId,
+          phone: foundNode.phoneNumber || 'N/A',
+          nodeName: foundNode.nodeName
+        });
+
+        logAction(`Guardian Signal Intercept initiated for ID: ${trackSecretId}`);
+        
+        // Auto reset trackRequest
+        setTimeout(() => {
+          update(nodeRef, { trackRequest: false });
+        }, 10000);
+
+        onValue(nodeRef, (snapshot) => {
+          const nodeData = snapshot.val();
+          if (nodeData && nodeData.latitude && nodeData.longitude) {
+            setTrackingLocation({
+              latitude: nodeData.latitude,
+              longitude: nodeData.longitude
+            });
+            setIsLiveMapOpen(true);
+            setIsTrackDialogOpen(false);
+          }
+        });
+
+        toast({ title: "Signal Locked", description: `Intercepted communication: ${foundNode.phoneNumber || 'N/A'}` });
+      } else {
+        toast({ variant: "destructive", title: "Target Missing", description: "No matching hardware signature found across the network." });
+      }
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Intercept Failed", description: err.message });
+    } finally {
+      setRegisterLoading(false);
+    }
   };
 
   const safeFormatTime = (ts: any) => {
@@ -328,10 +387,11 @@ export default function DashboardPage() {
   if (!user) return null;
 
   const navItems = [
-    { id: 'buddies', label: 'MANAGE BUDDY', icon: Smartphone },
-    { id: 'nodes', label: 'MANAGE NODE', icon: Cpu },
-    { id: 'notifications', label: 'NOTIFICATION', icon: Bell },
-    { id: 'settings', label: 'SETTINGS', icon: Settings },
+    ...(userRole === 'guardian' ? [{ id: 'guardian', label: 'OVERWATCH', icon: ShieldAlert }] : []),
+    { id: 'buddies', label: 'BUDDIES', icon: Smartphone },
+    { id: 'nodes', label: 'NODES', icon: Cpu },
+    { id: 'notifications', label: 'LOGS', icon: Bell },
+    { id: 'settings', label: 'PROFILE', icon: Settings },
   ] as const;
 
   return (
@@ -346,7 +406,7 @@ export default function DashboardPage() {
             </Avatar>
             <div className="overflow-hidden">
               <p className="text-sm font-bold truncate">{currentName}</p>
-              <p className="text-[10px] text-muted-foreground truncate uppercase tracking-widest">{user.email}</p>
+              <p className="text-[10px] text-muted-foreground truncate uppercase tracking-widest">{userRole}</p>
             </div>
           </div>
           <nav className="space-y-4">
@@ -371,10 +431,59 @@ export default function DashboardPage() {
 
       <main className="flex-1 p-6 md:p-16 overflow-y-auto">
         <div className="max-w-6xl mx-auto">
+          {activeTab === 'guardian' && (
+             <div className="space-y-10">
+               <div className="flex items-center justify-between">
+                  <h1 className="text-4xl font-bold tracking-tighter text-[#12086F]">GUARDIAN OVERWATCH</h1>
+                  <Button onClick={() => setIsTrackDialogOpen(true)} className="rounded-2xl font-bold text-[10px] uppercase tracking-widest h-12 px-8 bg-secondary hover:bg-secondary text-white shadow-lg shadow-secondary/20">
+                    <Radar className="h-4 w-4 mr-2" /> TRACK ASSET
+                  </Button>
+               </div>
+               
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                 <Card className="glass-card p-10 flex flex-col items-center justify-center text-center space-y-6">
+                    <ShieldAlert className="h-12 w-12 text-secondary" />
+                    <div>
+                      <h3 className="text-xl font-bold text-[#12086F] mb-2">Tactical Intercept</h3>
+                      <p className="text-[10px] font-bold uppercase tracking-widest opacity-60">Authorize high-level tracking protocols using secret hardware signatures.</p>
+                    </div>
+                    <Button variant="outline" onClick={() => setIsTrackDialogOpen(true)} className="rounded-xl font-bold text-[10px] uppercase tracking-widest h-12 px-10 border-secondary/20 text-secondary hover:bg-secondary/5">Initialize Signal Search</Button>
+                 </Card>
+
+                 <Card className="glass-card p-10 flex flex-col items-center justify-center text-center space-y-6">
+                    <MapPin className="h-12 w-12 text-primary" />
+                    <div>
+                      <h3 className="text-xl font-bold text-[#12086F] mb-2">Cross-Network Scan</h3>
+                      <p className="text-[10px] font-bold uppercase tracking-widest opacity-60">Locate any hardware node registered within the 1TAP security ecosystem.</p>
+                    </div>
+                    <Badge className="bg-primary/10 text-primary border-none text-[9px] uppercase font-bold px-4 py-1.5 rounded-full">Monitoring Protocol Active</Badge>
+                 </Card>
+               </div>
+
+               {trackResult && (
+                 <Card className="glass-card p-8 border-secondary/20 animate-in fade-in slide-in-from-top-4 duration-500">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-6">
+                        <div className="h-12 w-12 bg-secondary/20 rounded-2xl flex items-center justify-center border border-secondary/20">
+                          <Radar className="h-6 w-6 text-secondary animate-pulse" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-widest opacity-40">Active Intercept Result</p>
+                          <p className="text-lg font-bold text-[#12086F]">Signal locked for hardware ID: <span className="text-secondary">{trackResult.id}</span></p>
+                          <p className="text-[10px] font-mono font-bold text-secondary uppercase tracking-widest mt-1">COMM LINK: {trackResult.phone}</p>
+                        </div>
+                      </div>
+                      <Button size="sm" onClick={() => setIsLiveMapOpen(true)} className="bg-secondary hover:bg-secondary text-white text-[9px] font-bold uppercase px-6 h-10 rounded-xl">View Tactical Map</Button>
+                    </div>
+                 </Card>
+               )}
+             </div>
+          )}
+
           {activeTab === 'buddies' && (
             <div className="space-y-10">
               <div className="flex items-center justify-between">
-                <h1 className="text-4xl font-bold tracking-tighter text-[#12086F]">MANAGE BUDDY</h1>
+                <h1 className="text-4xl font-bold tracking-tighter text-[#12086F]">MANAGE BUDDIES</h1>
                 <div className="flex gap-4">
                   <Button onClick={() => setIsAddBuddyDialogOpen(true)} className="rounded-2xl font-bold text-[10px] uppercase tracking-widest h-12 px-8 bg-primary hover:bg-primary text-white">
                     <UserPlus className="h-4 w-4 mr-2" /> Enlist
@@ -424,7 +533,7 @@ export default function DashboardPage() {
           {activeTab === 'nodes' && (
             <div className="space-y-10">
               <div className="flex items-center justify-between">
-                <h1 className="text-4xl font-bold tracking-tighter text-[#12086F]">MANAGE NODE</h1>
+                <h1 className="text-4xl font-bold tracking-tighter text-[#12086F]">MANAGE NODES</h1>
                 <Button onClick={() => setIsAddNodeDialogOpen(true)} className="rounded-2xl font-bold text-[10px] uppercase tracking-widest h-12 px-8 bg-primary hover:bg-primary text-white">
                   <PlusSquare className="h-4 w-4 mr-2" /> Arm Node
                 </Button>
@@ -472,7 +581,6 @@ export default function DashboardPage() {
                         <div className="flex flex-wrap gap-4 pt-6 border-t border-primary/10">
                           <Button variant="ghost" size="sm" className="h-10 rounded-xl text-[9px] font-bold uppercase tracking-widest flex-1 bg-primary/5" onClick={() => { setItemToView(node); setIsViewItemDialogOpen(true); }}><Eye className="h-3.5 w-3.5 mr-2" /> View</Button>
                           <Button variant="ghost" size="sm" className="h-10 rounded-xl text-[9px] font-bold uppercase tracking-widest flex-1 bg-primary text-white" onClick={() => { setItemToEdit(node); setIsEditNodeDialogOpen(true); }}><Pencil className="h-3.5 w-3.5 mr-2" /> Edit</Button>
-                          <Button variant="ghost" size="sm" className="h-10 rounded-xl text-[9px] font-bold uppercase tracking-widest flex-1 bg-secondary text-white hover:bg-secondary" onClick={() => { setTrackSecretId(node.hardwareId || ""); setIsTrackDialogOpen(true); }}><Radar className="h-3.5 w-3.5 mr-2" /> Track</Button>
                           <Button variant="ghost" size="sm" className="h-10 rounded-xl text-destructive" onClick={() => { setItemToDelete({ ...node, type: 'node' }); setIsDeleteDialogOpen(true); }}><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       </CardContent>
@@ -486,7 +594,7 @@ export default function DashboardPage() {
           {activeTab === 'notifications' && (
             <div className="space-y-10">
               <div className="flex items-center justify-between">
-                <h1 className="text-4xl font-bold tracking-tighter text-[#12086F]">NOTIFICATION</h1>
+                <h1 className="text-4xl font-bold tracking-tighter text-[#12086F]">NOTIFICATION LOGS</h1>
                 {notifications.length > 0 && (
                   <Button 
                     variant="ghost" 
@@ -566,11 +674,13 @@ export default function DashboardPage() {
 
           {activeTab === 'settings' && (
             <div className="max-w-md space-y-10">
-              <h1 className="text-4xl font-bold tracking-tighter text-[#12086F]">SETTINGS</h1>
+              <h1 className="text-4xl font-bold tracking-tighter text-[#12086F]">PROFILE SETTINGS</h1>
               <Card className="glass-card border-none p-10 space-y-8">
                 <div className="p-6 bg-primary/5 rounded-2xl border border-primary/10">
                   <p className="text-[10px] font-bold text-secondary uppercase tracking-widest mb-2">Auth Identification</p>
                   <p className="text-[10px] font-mono opacity-60 truncate">{user.uid}</p>
+                  <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-4 mb-2">Tactical Role</p>
+                  <Badge className="bg-primary text-white border-none text-[9px] font-bold uppercase px-4">{userRole}</Badge>
                 </div>
                 <Button variant="destructive" onClick={() => signOut(auth).then(() => router.push("/login"))} className="w-full h-14 rounded-2xl font-bold text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-destructive/20 text-white">
                   <LogOut className="h-4 w-4 mr-3" /> Terminate Session
@@ -586,16 +696,16 @@ export default function DashboardPage() {
           <DialogHeader><DialogTitle className="text-xl font-bold uppercase tracking-widest text-secondary mb-6">Track Hardware Node</DialogTitle></DialogHeader>
           <form onSubmit={handleStartTracking} className="space-y-6">
             <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60 ml-1">Secret ID / Hardware ID</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60 ml-1">SECRET ID / HARDWARE ID / ID</Label>
               <Input 
                 value={trackSecretId} 
                 onChange={e => setTrackSecretId(e.target.value)} 
                 className="bg-primary/5 border-primary/10 rounded-2xl h-14 text-sm font-mono" 
-                placeholder="e.g. ESP32-TACTICAL-01"
+                placeholder="e.g. 1Tap or ESP32-TACTICAL"
                 required 
               />
             </div>
-            <Button type="submit" className="w-full h-14 rounded-2xl font-bold text-[10px] uppercase tracking-widest shadow-lg bg-primary hover:bg-primary text-white" disabled={registerLoading}>
+            <Button type="submit" className="w-full h-14 rounded-2xl font-bold text-[10px] uppercase tracking-widest shadow-lg bg-secondary hover:bg-secondary text-white" disabled={registerLoading}>
               {registerLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Initiate Tracking"}
             </Button>
           </form>

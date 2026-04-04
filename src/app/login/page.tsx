@@ -1,8 +1,9 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { useAuth, useUser } from "@/firebase";
+import { useAuth, useUser, useDatabase } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,12 +12,14 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2, ShieldCheck } from "lucide-react";
+import { ref, get } from "firebase/database";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { user, loading: userLoading } = useUser();
+  const rtdb = useDatabase();
   const { toast } = useToast();
   const router = useRouter();
   const auth = useAuth();
@@ -31,8 +34,19 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      router.push("/dashboard");
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const loggedUser = userCredential.user;
+      
+      // Fetch role for redirection context (actual redirection happens in dashboard or layout)
+      const profileRef = ref(rtdb, `users/${loggedUser.uid}/profile`);
+      const snapshot = await get(profileRef);
+      const profile = snapshot.val();
+      
+      if (profile?.role === 'guardian') {
+        router.push("/dashboard?view=guardian");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (error: any) {
       toast({
         variant: "destructive",

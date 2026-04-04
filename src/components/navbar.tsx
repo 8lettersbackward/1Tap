@@ -1,16 +1,32 @@
+
 "use client";
 
 import Link from "next/link";
-import { useUser, useAuth } from "@/firebase";
+import { useUser, useAuth, useDatabase } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import { signOut } from "firebase/auth";
-import { Menu, X, User as UserIcon, Hexagon } from "lucide-react";
-import { useState } from "react";
+import { Menu, X, User as UserIcon, Hexagon, Radar, ShieldAlert } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ref, get } from "firebase/database";
 
 export function Navbar() {
   const { user } = useUser();
   const auth = useAuth();
+  const rtdb = useDatabase();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user && rtdb) {
+      const profileRef = ref(rtdb, `users/${user.uid}/profile`);
+      get(profileRef).then(snapshot => {
+        const profile = snapshot.val();
+        setUserRole(profile?.role || 'user');
+      });
+    } else {
+      setUserRole(null);
+    }
+  }, [user, rtdb]);
 
   const handleSignOut = async () => {
     await signOut(auth);
@@ -33,8 +49,18 @@ export function Navbar() {
           <div className="hidden md:flex items-center space-x-10">
             {user ? (
               <div className="flex items-center space-x-8">
+                {userRole === 'guardian' && (
+                  <Link href="/dashboard?view=guardian">
+                    <Button variant="ghost" className="text-secondary hover:bg-secondary/10 gap-2 text-[10px] font-bold uppercase tracking-widest h-10 px-4 rounded-xl">
+                      <Radar className="h-4 w-4" /> Track
+                    </Button>
+                  </Link>
+                )}
                 <div className="flex flex-col items-end">
-                   <span className="text-[10px] font-bold uppercase tracking-widest text-primary leading-none mb-1">{currentName}</span>
+                   <div className="flex items-center gap-2 mb-1">
+                     {userRole === 'guardian' && <ShieldAlert className="h-3 w-3 text-secondary" />}
+                     <span className="text-[10px] font-bold uppercase tracking-widest text-primary leading-none">{currentName}</span>
+                   </div>
                    <Link href="/dashboard" className="text-[8px] font-bold uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground transition-colors">
                     TERMINAL
                   </Link>
@@ -74,11 +100,17 @@ export function Navbar() {
           {user ? (
             <>
               <div className="pb-6 border-b border-primary/5">
-                <p className="text-sm font-bold uppercase tracking-widest text-primary">{currentName}</p>
+                <div className="flex items-center gap-2">
+                  {userRole === 'guardian' && <ShieldAlert className="h-4 w-4 text-secondary" />}
+                  <p className="text-sm font-bold uppercase tracking-widest text-primary">{currentName}</p>
+                </div>
                 <p className="text-[10px] font-mono text-muted-foreground mt-2">{user.email}</p>
               </div>
               <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="block text-xs font-bold uppercase tracking-[0.3em] text-foreground">TERMINAL</Link>
               <Link href="/profile" onClick={() => setMobileMenuOpen(false)} className="block text-xs font-bold uppercase tracking-[0.3em] text-foreground">PROFILE</Link>
+              {userRole === 'guardian' && (
+                <Link href="/dashboard?view=guardian" onClick={() => setMobileMenuOpen(false)} className="block text-xs font-bold uppercase tracking-[0.3em] text-secondary">TACTICAL TRACK</Link>
+              )}
               <button onClick={handleSignOut} className="w-full text-left text-xs font-bold uppercase tracking-[0.3em] text-destructive">TERMINATE SESSION</button>
             </>
           ) : (

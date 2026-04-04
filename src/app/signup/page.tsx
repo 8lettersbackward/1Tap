@@ -1,23 +1,28 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { useAuth, useUser } from "@/firebase";
+import { useAuth, useUser, useDatabase } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, UserPlus } from "lucide-react";
+import { Loader2, UserPlus, Shield, Smartphone } from "lucide-react";
+import { ref, set } from "firebase/database";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [role, setRole] = useState<"user" | "guardian">("user");
   const [loading, setLoading] = useState(false);
   const { user, loading: userLoading } = useUser();
+  const rtdb = useDatabase();
   const { toast } = useToast();
   const router = useRouter();
   const auth = useAuth();
@@ -40,7 +45,17 @@ export default function SignupPage() {
     }
     setLoading(true);
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const newUser = userCredential.user;
+      
+      // Store role in profile
+      await set(ref(rtdb, `users/${newUser.uid}/profile`), {
+        email: newUser.email,
+        role: role,
+        createdAt: Date.now(),
+        displayName: email.split('@')[0]
+      });
+
       router.push("/dashboard");
     } catch (error: any) {
       toast({
@@ -80,6 +95,32 @@ export default function SignupPage() {
         </CardHeader>
         <form onSubmit={handleSignup} className="space-y-6">
           <CardContent className="space-y-6 p-0">
+            <div className="space-y-3">
+              <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Select Tactical Role</Label>
+              <RadioGroup value={role} onValueChange={(val: any) => setRole(val)} className="grid grid-cols-2 gap-4">
+                <div>
+                  <RadioGroupItem value="user" id="user" className="peer sr-only" />
+                  <Label
+                    htmlFor="user"
+                    className="flex flex-col items-center justify-between rounded-2xl border-2 border-primary/10 bg-primary/5 p-4 hover:bg-primary/10 peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer transition-all"
+                  >
+                    <Smartphone className="mb-2 h-6 w-6 text-primary" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest">User</span>
+                  </Label>
+                </div>
+                <div>
+                  <RadioGroupItem value="guardian" id="guardian" className="peer sr-only" />
+                  <Label
+                    htmlFor="guardian"
+                    className="flex flex-col items-center justify-between rounded-2xl border-2 border-primary/10 bg-primary/5 p-4 hover:bg-primary/10 peer-data-[state=checked]:border-secondary [&:has([data-state=checked])]:border-secondary cursor-pointer transition-all"
+                  >
+                    <Shield className="mb-2 h-6 w-6 text-secondary" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest">Guardian</span>
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="email" className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Email Address</Label>
               <Input
