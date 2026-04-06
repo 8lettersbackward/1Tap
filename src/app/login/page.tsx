@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { useAuth, useUser, useDatabase } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,11 +42,7 @@ export default function LoginPage() {
       const snapshot = await get(profileRef);
       const profile = snapshot.val();
       
-      if (profile?.role === 'guardian') {
-        router.push("/dashboard");
-      } else {
-        router.push("/dashboard");
-      }
+      router.push("/dashboard");
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -55,30 +51,6 @@ export default function LoginPage() {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleResetPassword = async () => {
-    if (!email) {
-      toast({
-        variant: "destructive",
-        title: "Reset Blocked",
-        description: "Please enter your email address to receive a reset dispatch.",
-      });
-      return;
-    }
-    try {
-      await sendPasswordResetEmail(auth, email);
-      toast({
-        title: "Reset Dispatched",
-        description: "Check your terminal (inbox) for the recovery protocol.",
-      });
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Reset Failed",
-        description: error.message || "Identity recovery dispatch failed.",
-      });
     }
   };
 
@@ -124,13 +96,6 @@ export default function LoginPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between ml-1">
                 <Label htmlFor="password" title="Password" className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Password</Label>
-                <button 
-                  type="button"
-                  onClick={handleResetPassword}
-                  className="text-[10px] text-secondary font-bold uppercase hover:opacity-80 transition-opacity"
-                >
-                  Reset
-                </button>
               </div>
               <div className="relative">
                 <Input
