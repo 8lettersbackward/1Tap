@@ -94,8 +94,8 @@ export default function ProfilePage() {
     try {
       await updatePassword(user, newPassword);
       toast({ 
-        title: "Credentials Synchronized", 
-        description: "Your access key has been rotated successfully." 
+        title: "Password Synchronized", 
+        description: "Your account password has been updated successfully." 
       });
       setNewPassword("");
       setConfirmNewPassword("");
@@ -104,7 +104,7 @@ export default function ProfilePage() {
         toast({ 
           variant: "destructive", 
           title: "Re-authentication Required", 
-          description: "For security, please sign out and sign back in to rotate your access key." 
+          description: "For security, please sign out and sign back in to change your password." 
         });
       } else {
         toast({ 
@@ -234,14 +234,14 @@ export default function ProfilePage() {
           <Card className="border-none shadow-2xl bg-white rounded-xl">
             <CardHeader className="border-b border-white/10">
               <CardTitle className="text-sm uppercase font-bold tracking-[0.2em] text-secondary flex items-center gap-2">
-                <Lock className="h-4 w-4" /> Access Credentials
+                <Lock className="h-4 w-4" /> Security Credentials
               </CardTitle>
-              <CardDescription className="text-[10px] uppercase text-muted-foreground">Rotate your access keys.</CardDescription>
+              <CardDescription className="text-[10px] uppercase text-muted-foreground">Update your master account password.</CardDescription>
             </CardHeader>
             <form onSubmit={handleChangePassword}>
               <CardContent className="space-y-6 pt-6">
                 <div className="space-y-2">
-                  <Label htmlFor="new-password" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">New Access Key</Label>
+                  <Label htmlFor="new-password" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">New Password</Label>
                   <Input 
                     id="new-password" 
                     type="password"
@@ -253,7 +253,7 @@ export default function ProfilePage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="confirm-new-password" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Confirm New Key</Label>
+                  <Label htmlFor="confirm-new-password" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Confirm New Password</Label>
                   <Input 
                     id="confirm-new-password" 
                     type="password"
@@ -267,7 +267,7 @@ export default function ProfilePage() {
               </CardContent>
               <CardFooter className="pt-6 border-t border-white/10">
                 <Button type="submit" disabled={updatingPassword} className="w-full h-16 bg-accent hover:bg-accent/90 uppercase font-bold tracking-[0.3em] text-xs shadow-2xl text-white">
-                  {updatingPassword ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <><KeyRound className="mr-2 h-4 w-4" /> Rotate Access Key</>}
+                  {updatingPassword ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <><KeyRound className="mr-2 h-4 w-4" /> Change Password</>}
                 </Button>
               </CardFooter>
             </form>
