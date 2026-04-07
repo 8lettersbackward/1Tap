@@ -1,3 +1,4 @@
+
 'use server';
 
 import { ai } from '@/ai/genkit';
@@ -28,16 +29,16 @@ const reverseGeocodeFlow = ai.defineFlow(
   },
   async (input) => {
     const { output } = await ai.generate({
-      system: 'You are a precise geographical geocoding assistant. Your task is to convert latitude and longitude coordinates into structured location data. Return the city/municipality, province/state, and country.',
-      prompt: `Identify the specific city, province, and country for these coordinates: Latitude ${input.latitude}, Longitude ${input.longitude}`,
+      system: 'You are a precise geographical geocoding assistant for a professional security agency. Your task is to convert latitude and longitude coordinates into a concise, high-accuracy location name. Return the city/municipality, province/state, and country.',
+      prompt: `Identify the specific city, province, and country for these coordinates: Latitude ${input.latitude}, Longitude ${input.longitude}. If it's a famous landmark, include it.`,
       output: { schema: GeocodeOutputSchema }
     });
 
     if (!output) {
       return { 
-        city: "Unknown City", 
-        province: "Unknown Province", 
-        country: "Unknown Country" 
+        city: "Unknown Sector", 
+        province: "Unknown District", 
+        country: "Unknown Territory" 
       };
     }
 

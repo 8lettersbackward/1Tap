@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Buddy": {
@@ -34,7 +35,8 @@
         "status": { "type": "string", "enum": ["online", "offline", "error"] },
         "temperature": { "type": "number" },
         "targetGroups": { "type": "array", "items": { "type": "string" } },
-        "registeredAt": { "type": "number" }
+        "registeredAt": { "type": "number" },
+        "place": { "type": "string" }
       },
       "required": ["nodeName", "hardwareId", "status"]
     },
@@ -49,7 +51,8 @@
         "timestamp": { "type": "number" },
         "triggeredByNode": { "type": "string" },
         "latitude": { "type": "number" },
-        "longitude": { "type": "number" }
+        "longitude": { "type": "number" },
+        "place": { "type": "string" }
       }
     }
   },

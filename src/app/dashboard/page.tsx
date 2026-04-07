@@ -67,7 +67,7 @@ import { reverseGeocode } from "@/ai/flows/reverse-geocode-flow";
 
 const SOSMap = dynamic(() => import("./sos-map"), { 
   ssr: false,
-  loading: () => <div className="h-[300px] md:h-[420px] w-full bg-muted animate-pulse rounded-lg flex items-center justify-center text-[10px] font-bold uppercase tracking-widest opacity-40">Initializing Terminal Map...</div>
+  loading: () => <div className="h-[250px] md:h-[350px] w-full bg-muted animate-pulse rounded-lg flex items-center justify-center text-[10px] font-bold uppercase tracking-widest opacity-40">Initializing Terminal Map...</div>
 });
 
 type TabType = 'buddies' | 'nodes' | 'notifications' | 'settings' | 'guardian' | 'my-guardians';
@@ -269,6 +269,8 @@ export default function DashboardPage() {
             try {
               const geo = await reverseGeocode({ latitude: Number(alert.latitude), longitude: Number(alert.longitude) });
               enhancedAlert.place = `${geo.city}, ${geo.province}, ${geo.country}`;
+              // Update the entry with the real place if it was missing
+              update(ref(rtdb, `users/${user.uid}/notifications/${alertId}`), { place: enhancedAlert.place });
             } catch (e) {
               console.error("SOS Geocoding failed", e);
             }
@@ -364,7 +366,7 @@ export default function DashboardPage() {
 
     setRegisterLoading(false);
     setIsSimulateDialogOpen(false);
-    toast({ title: "Signal Dispatched", description: "Mock coordinate signature saved to vault." });
+    toast({ title: "Signal Dispatched", description: `Tactical intercept at: ${placeName}` });
   };
 
   const handleSendLinkRequest = (targetUser: any) => {
@@ -1103,6 +1105,7 @@ export default function DashboardPage() {
                         <div className="max-w-full overflow-hidden flex-1">
                            <p className="text-lg font-bold text-[#12086F] truncate">{node.nodeName}</p>
                            <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest truncate">ID: {node.hardwareId}</p>
+                           {node.place && <p className="text-[10px] font-bold text-accent uppercase tracking-widest mt-1"><MapPin className="h-3 w-3 inline mr-1" /> {node.place}</p>}
                         </div>
                         <div className="w-full sm:w-auto flex items-center gap-4">
                            <Button 
@@ -1124,7 +1127,7 @@ export default function DashboardPage() {
                            <SOSMap 
                              latitude={node.latitude} 
                              longitude={node.longitude} 
-                             label={`${node.nodeName} - LIVE`} 
+                             label={`${node.nodeName} - ${node.place || 'LIVE'}`} 
                            />
                         </div>
                       )}
@@ -1157,7 +1160,7 @@ export default function DashboardPage() {
                   <SOSMap 
                       latitude={mapNotification.latitude} 
                       longitude={mapNotification.longitude}
-                      label={mapNotification.message || "SIGNAL INTERCEPT"}
+                      label={mapNotification.place || mapNotification.message || "SIGNAL INTERCEPT"}
                   />
                   {mapNotification.place && (
                     <div className="p-4 md:p-6 bg-white/80 backdrop-blur-md border-t border-primary/10 flex items-center gap-3">
@@ -1213,7 +1216,7 @@ export default function DashboardPage() {
                   <SOSMap 
                       latitude={activeSosAlert?.latitude || 0} 
                       longitude={activeSosAlert?.longitude || 0}
-                      label={activeSosAlert?.nodeName}
+                      label={activeSosAlert?.place || activeSosAlert?.nodeName || "SOS SIGNAL"}
                   />
                   <div className="p-4 md:p-6 bg-white/80 backdrop-blur-md border-t border-destructive/10 flex items-center gap-3">
                       <MapPin className="h-4 w-4 md:h-5 md:w-5 text-destructive flex-shrink-0" />
@@ -1447,6 +1450,12 @@ export default function DashboardPage() {
                   <span className="text-[10px] uppercase font-bold opacity-40 tracking-widest flex-shrink-0">Descriptor</span>
                   <span className="text-sm font-bold text-[#12086F] truncate">{itemToView.nodeName || itemToView.name}</span>
                 </div>
+                {itemToView.place && (
+                  <div className="flex justify-between items-center gap-2">
+                    <span className="text-[10px] uppercase font-bold opacity-40 tracking-widest flex-shrink-0">Last Known Base</span>
+                    <span className="text-[10px] font-bold text-accent truncate">{itemToView.place}</span>
+                  </div>
+                )}
                 {itemToView.phoneNumber && (
                   <div className="flex justify-between items-center gap-2">
                     <span className="text-[10px] uppercase font-bold opacity-40 tracking-widest flex-shrink-0">Phone Number</span>
