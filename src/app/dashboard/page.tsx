@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useUser, useDatabase, useFirebase } from "@/firebase";
@@ -1108,7 +1107,7 @@ export default function DashboardPage() {
       <Dialog open={isMapModalOpen} onOpenChange={setIsMapModalOpen}>
         <DialogContent className="bg-white border-none shadow-2xl rounded-[2rem] w-[95vw] max-w-3xl p-0 overflow-hidden max-h-[90vh] flex flex-col">
           <DialogHeader className="p-6 md:p-8 border-b border-primary/5">
-            <DialogTitle className="text-lg md:text-xl font-bold uppercase tracking-widest text-secondary truncate">Spatial Coordinate Intercept</DialogTitle>
+            <DialogTitle className="text-md sm:text-lg md:text-xl font-bold uppercase tracking-widest text-secondary truncate min-w-0">Spatial Coordinate Intercept</DialogTitle>
           </DialogHeader>
           <div className="flex-1 overflow-hidden relative">
             <ScrollArea className="h-full">
@@ -1146,10 +1145,10 @@ export default function DashboardPage() {
         <DialogContent className="bg-white border-2 border-destructive/20 shadow-2xl rounded-[2rem] w-[95vw] max-w-2xl p-0 overflow-hidden max-h-[90vh] flex flex-col">
           <DialogHeader className="p-6 md:p-10 border-b border-destructive/5 bg-destructive/5">
              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-               <div className="flex items-center gap-4 overflow-hidden flex-1">
+               <div className="flex items-center gap-4 overflow-hidden flex-1 min-w-0">
                   <AlertTriangle className="h-6 w-6 md:h-8 md:w-8 text-destructive animate-bounce flex-shrink-0" />
-                  <div className="overflow-hidden">
-                    <DialogTitle className="text-xl md:text-2xl font-bold text-destructive uppercase tracking-tighter truncate">Tactical SOS Intercept</DialogTitle>
+                  <div className="overflow-hidden min-w-0">
+                    <DialogTitle className="text-lg sm:text-xl md:text-2xl font-bold text-destructive uppercase tracking-tighter truncate min-w-0">Tactical SOS Intercept</DialogTitle>
                     <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 truncate">Master Signal: {activeSosAlert?.nodeName || 'Hardware Node'}</p>
                   </div>
                </div>
