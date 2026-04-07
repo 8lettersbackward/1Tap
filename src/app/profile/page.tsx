@@ -10,9 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { updatePassword, updateProfile, signOut } from "firebase/auth";
+import { updateProfile, signOut } from "firebase/auth";
 import { ref, set } from "firebase/database";
-import { Loader2, User as UserIcon, Shield, Bell, LogOut, IdCard, Mail, Camera, ArrowLeft } from "lucide-react";
+import { Loader2, User as UserIcon, LogOut, IdCard, Mail, Camera, ArrowLeft } from "lucide-react";
 
 export default function ProfilePage() {
   const { user, loading: userLoading } = useUser();
@@ -23,7 +23,6 @@ export default function ProfilePage() {
   
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
-  const [newPassword, setNewPassword] = useState("");
   const [updating, setUpdating] = useState(false);
 
   const profileRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/profile`) : null, [rtdb, user]);
@@ -74,28 +73,6 @@ export default function ProfilePage() {
     }
   };
 
-  const handleUpdatePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !newPassword) return;
-    setUpdating(true);
-    try {
-      await updatePassword(user, newPassword);
-      setNewPassword("");
-      toast({ 
-        title: "Password Rotated", 
-        description: "Your access keys are now updated." 
-      });
-    } catch (error: any) {
-      toast({ 
-        variant: "destructive", 
-        title: "Security Update Failed", 
-        description: "Please re-authenticate to verify ownership." 
-      });
-    } finally {
-      setUpdating(false);
-    }
-  };
-
   const handleSignOut = () => {
     signOut(auth).then(() => router.push("/login"));
   };
@@ -126,12 +103,12 @@ export default function ProfilePage() {
 
       <header className="mb-12">
         <h1 className="text-4xl font-headline font-bold tracking-tighter uppercase mb-2 text-foreground">Account Hub</h1>
-        <p className="text-muted-foreground text-sm tracking-wide uppercase">System identification and security protocols.</p>
+        <p className="text-muted-foreground text-sm tracking-wide uppercase">System identification and hub protocols.</p>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
         <aside className="space-y-4">
-          <div className="p-8 border-2 border-dashed border-white/10 bg-card flex flex-col items-center text-center mb-6 rounded-xl shadow-xl">
+          <div className="p-8 border-2 border-dashed border-white/10 bg-white flex flex-col items-center text-center mb-6 rounded-xl shadow-xl">
             <Avatar className="h-28 w-28 rounded-none border-2 border-primary mb-4 shadow-[0_0_20px_rgba(72,149,239,0.3)]">
               <AvatarImage src={avatarUrl} alt={currentDisplayName} />
               <AvatarFallback className="rounded-none bg-primary text-primary-foreground text-3xl font-bold">
@@ -146,9 +123,6 @@ export default function ProfilePage() {
             <Button variant="ghost" className="w-full justify-start gap-3 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 font-bold uppercase text-[10px] tracking-widest shadow-lg">
               <UserIcon className="h-4 w-4" /> Identification
             </Button>
-            <Button variant="ghost" className="w-full justify-start gap-3 rounded-md hover:bg-card font-bold uppercase text-[10px] tracking-widest text-muted-foreground">
-              <Shield className="h-4 w-4" /> Security
-            </Button>
             <Separator className="my-6 border-white/10" />
             <Button variant="ghost" className="w-full justify-start gap-3 rounded-md text-destructive hover:bg-destructive/10 font-bold uppercase text-[10px] tracking-widest" onClick={handleSignOut}>
               <LogOut className="h-4 w-4" /> Terminate Session
@@ -157,7 +131,7 @@ export default function ProfilePage() {
         </aside>
 
         <div className="md:col-span-2 space-y-10">
-          <Card className="border-none shadow-2xl bg-card rounded-xl">
+          <Card className="border-none shadow-2xl bg-white rounded-xl">
             <CardHeader className="border-b border-white/10">
               <CardTitle className="text-sm uppercase font-bold tracking-[0.2em] text-secondary">Identification Profile</CardTitle>
               <CardDescription className="text-[10px] uppercase text-muted-foreground">Core system identity settings.</CardDescription>
@@ -207,33 +181,6 @@ export default function ProfilePage() {
               <CardFooter className="pt-6 border-t border-white/10">
                 <Button type="submit" disabled={updating} className="w-full h-16 bg-primary hover:bg-secondary uppercase font-bold tracking-[0.3em] text-xs shadow-2xl">
                   {updating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Synchronize Profile"}
-                </Button>
-              </CardFooter>
-            </form>
-          </Card>
-
-          <Card className="border-none shadow-2xl bg-card rounded-xl">
-            <CardHeader className="border-b border-white/10">
-              <CardTitle className="text-sm uppercase font-bold tracking-[0.2em] text-secondary">Security Protocol</CardTitle>
-              <CardDescription className="text-[10px] uppercase text-muted-foreground">Rotate your access credentials.</CardDescription>
-            </CardHeader>
-            <form onSubmit={handleUpdatePassword}>
-              <CardContent className="space-y-4 pt-6">
-                <div className="space-y-2">
-                  <Label htmlFor="new-password" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">New System Password</Label>
-                  <Input 
-                    id="new-password" 
-                    type="password" 
-                    placeholder="••••••••"
-                    value={newPassword} 
-                    onChange={(e) => setNewPassword(e.target.value)} 
-                    className="bg-background border-white/10 focus:border-primary h-14"
-                  />
-                </div>
-              </CardContent>
-              <CardFooter className="pt-6 border-t border-white/10">
-                <Button type="submit" variant="outline" disabled={updating || !newPassword} className="w-full h-14 border-primary text-primary hover:bg-primary/10 uppercase font-bold tracking-[0.2em] text-[10px]">
-                  Rotate Access Keys
                 </Button>
               </CardFooter>
             </form>
