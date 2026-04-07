@@ -272,6 +272,11 @@ export default function DashboardPage() {
     return Object.entries(linksData).map(([id, val]: [string, any]) => ({ ...val, uid: id }));
   }, [linksData]);
 
+  const availableToLink = useMemo(() => {
+    const linkedUids = links.map(l => l.uid);
+    return allUsers.filter(u => !linkedUids.includes(u.uid));
+  }, [allUsers, links]);
+
   const pendingRequests = useMemo(() => links.filter(l => l.status === 'pending'), [links]);
   const activeLinks = useMemo(() => links.filter(l => l.status === 'linked'), [links]);
 
@@ -527,7 +532,7 @@ export default function DashboardPage() {
               <Card className="glass-card border-none p-10 shadow-2xl">
                 <div className="space-y-8">
                   <div className="space-y-4">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60 ml-1">Enter User Email</Label>
+                    <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60 ml-1">Precision Search (Email)</Label>
                     <div className="flex flex-col md:flex-row gap-4">
                       <Input 
                         placeholder="e.g. cristian@gmail.com" 
@@ -541,12 +546,40 @@ export default function DashboardPage() {
                         disabled={registerLoading || !searchQuery}
                         className="rounded-2xl font-bold text-[10px] uppercase tracking-widest h-16 px-12 bg-secondary hover:bg-secondary/90 text-white"
                       >
-                        {registerLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <><UserPlus className="h-5 w-5 mr-3" /> Search & Link</>}
+                        {registerLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <><UserPlus className="h-5 w-5 mr-3" /> Intercept</>}
                       </Button>
                     </div>
                   </div>
                 </div>
               </Card>
+
+              <div className="space-y-6 pt-10 border-t border-primary/10">
+                <h2 className="text-xl font-bold tracking-tight text-[#12086F]">DISCOVERABLE PERSONNEL</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {availableToLink.length === 0 ? (
+                    <div className="col-span-full py-12 text-center opacity-40">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.3em]">No available personnel detected in scan range.</p>
+                    </div>
+                  ) : (
+                    availableToLink.map(target => (
+                      <Card key={target.uid} className="glass-card border-none group transition-all p-8 flex flex-col justify-between">
+                        <div className="mb-6">
+                          <p className="text-lg font-bold text-[#12086F] truncate">{target.displayName}</p>
+                          <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest truncate">{target.email}</p>
+                          <Badge className="mt-3 bg-primary/10 text-primary border-none text-[8px] uppercase font-bold px-2 py-0.5 rounded-md">ID: {target.role}</Badge>
+                        </div>
+                        <Button 
+                          onClick={() => handleSendLinkRequest(target)} 
+                          disabled={registerLoading}
+                          className="w-full bg-primary hover:bg-primary text-white rounded-xl h-10 text-[9px] font-bold uppercase tracking-widest"
+                        >
+                          {registerLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><UserPlus className="h-3.5 w-3.5 mr-2" /> Enlist Link</>}
+                        </Button>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              </div>
 
               <div className="space-y-6 pt-10 border-t border-primary/10">
                 <h2 className="text-xl font-bold tracking-tight text-[#12086F]">ACTIVE PROTOCOLS</h2>
@@ -1112,7 +1145,7 @@ export default function DashboardPage() {
                 onChange={e => setBuddyForm({...buddyForm, phoneNumber: e.target.value.replace(/\D/g, '').slice(0, 11)})} 
                 className="bg-primary/5 border-primary/10 rounded-2xl h-14 text-sm font-bold" 
                 maxLength={11}
-                placeholder="e.g. 09123456789"
+                placeholder="09123456789"
                 required 
               />
             </div>
@@ -1228,7 +1261,7 @@ export default function DashboardPage() {
                 onChange={e => setNodeForm({...nodeForm, phoneNumber: e.target.value.replace(/\D/g, '').slice(0, 11)})} 
                 className="bg-primary/5 border-primary/10 rounded-2xl h-14 text-sm font-bold" 
                 maxLength={11}
-                placeholder="e.g. 09123456789"
+                placeholder="09123456789"
               />
             </div>
             <div className="space-y-2">
