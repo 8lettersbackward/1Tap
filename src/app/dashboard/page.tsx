@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useUser, useDatabase, useFirebase } from "@/firebase";
@@ -546,7 +545,7 @@ export default function DashboardPage() {
       ];
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-[#e1f1fd] text-[#12086F] overflow-x-hidden">
+    <div className="flex flex-col md:flex-row min-h-screen bg-[#e1f1fd] text-[#12086F] overflow-x-hidden w-full">
       <aside className="w-full md:w-64 bg-white/50 border-r border-primary/10 p-4 sm:p-6 md:h-screen md:sticky top-0 backdrop-blur-md z-40 flex-shrink-0">
         <div className="space-y-8 md:space-y-12">
           <div className="flex items-center gap-4">
@@ -1017,7 +1016,7 @@ export default function DashboardPage() {
       </main>
 
       <Dialog open={isSimulateDialogOpen} onOpenChange={setIsSimulateDialogOpen}>
-        <DialogContent className="bg-white border border-primary/10 shadow-xl rounded-[2rem] w-[95vw] max-w-md p-6 md:p-10">
+        <DialogContent className="bg-white border border-primary/10 shadow-xl rounded-[2rem] w-[95vw] max-w-md p-6 md:p-10 overflow-y-auto max-h-[90vh]">
           <DialogHeader>
             <DialogTitle className="text-lg md:text-xl font-bold uppercase tracking-widest text-secondary mb-6 truncate">Signal Simulation Command</DialogTitle>
           </DialogHeader>
@@ -1050,7 +1049,7 @@ export default function DashboardPage() {
       </Dialog>
 
       <Dialog open={isTelemetryOpen} onOpenChange={setIsTelemetryOpen}>
-        <DialogContent className="bg-white border-2 border-accent/20 shadow-2xl rounded-[2rem] w-[95vw] max-w-4xl p-0 overflow-hidden">
+        <DialogContent className="bg-white border-2 border-accent/20 shadow-2xl rounded-[2rem] w-[95vw] max-w-4xl p-0 overflow-hidden max-h-[90vh]">
           <DialogHeader className="p-6 md:p-10 border-b border-accent/5 bg-accent/5">
              <div className="flex justify-between items-center">
                <div className="flex items-center gap-4">
@@ -1106,11 +1105,11 @@ export default function DashboardPage() {
       </Dialog>
 
       <Dialog open={isMapModalOpen} onOpenChange={setIsMapModalOpen}>
-        <DialogContent className="bg-white border-none shadow-2xl rounded-[2rem] w-[95vw] max-w-3xl p-0 overflow-hidden">
+        <DialogContent className="bg-white border-none shadow-2xl rounded-[2rem] w-[95vw] max-w-3xl p-0 overflow-hidden max-h-[90vh]">
           <DialogHeader className="p-6 md:p-8 border-b border-primary/5">
             <DialogTitle className="text-lg md:text-xl font-bold uppercase tracking-widest text-secondary truncate">Spatial Coordinate Intercept</DialogTitle>
           </DialogHeader>
-          <div className="p-0">
+          <div className="p-0 overflow-y-auto">
             {mapNotification && isValidCoordinate(mapNotification.latitude) && isValidCoordinate(mapNotification.longitude) && (
               <div className="relative">
                 <iframe
@@ -1141,7 +1140,7 @@ export default function DashboardPage() {
       </Dialog>
 
       <Dialog open={isSosMapOpen} onOpenChange={setIsSosMapOpen}>
-        <DialogContent className="bg-white border-2 border-destructive/20 shadow-2xl rounded-[2rem] w-[95vw] max-w-2xl p-0 overflow-hidden">
+        <DialogContent className="bg-white border-2 border-destructive/20 shadow-2xl rounded-[2rem] w-[95vw] max-w-2xl p-0 overflow-hidden max-h-[90vh] overflow-y-auto">
           <DialogHeader className="p-6 md:p-10 border-b border-destructive/5 bg-destructive/5">
              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                <div className="flex items-center gap-4 overflow-hidden flex-1">
@@ -1193,7 +1192,7 @@ export default function DashboardPage() {
       </Dialog>
 
       <Dialog open={isAddBuddyDialogOpen} onOpenChange={setIsAddBuddyDialogOpen}>
-        <DialogContent className="bg-white border border-primary/10 shadow-xl rounded-[2rem] w-[95vw] max-w-md p-6 md:p-10">
+        <DialogContent className="bg-white border border-primary/10 shadow-xl rounded-[2rem] w-[95vw] max-w-md p-6 md:p-10 max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle className="text-lg md:text-xl font-bold uppercase tracking-widest text-secondary mb-6 truncate">Enlist Buddy</DialogTitle></DialogHeader>
           <form onSubmit={(e) => {
             e.preventDefault();
@@ -1239,7 +1238,7 @@ export default function DashboardPage() {
       </Dialog>
 
       <Dialog open={isEditBuddyDialogOpen} onOpenChange={setIsEditBuddyDialogOpen}>
-        <DialogContent className="bg-white border border-primary/10 shadow-xl rounded-[2rem] w-[95vw] max-w-md p-6 md:p-10">
+        <DialogContent className="bg-white border border-primary/10 shadow-xl rounded-[2rem] w-[95vw] max-w-md p-6 md:p-10 max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle className="text-lg md:text-xl font-bold uppercase tracking-widest text-secondary mb-6 truncate">Recalibrate Buddy Protocol</DialogTitle></DialogHeader>
           <form onSubmit={(e) => {
             e.preventDefault();
@@ -1284,7 +1283,7 @@ export default function DashboardPage() {
       </Dialog>
 
       <Dialog open={isAddNodeDialogOpen} onOpenChange={setIsAddNodeDialogOpen}>
-        <DialogContent className="bg-white border border-primary/10 shadow-xl rounded-[2rem] w-[95vw] max-w-md p-6 md:p-10">
+        <DialogContent className="bg-white border border-primary/10 shadow-xl rounded-[2rem] w-[95vw] max-w-md p-6 md:p-10 max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle className="text-lg md:text-xl font-bold uppercase tracking-widest text-secondary mb-6 truncate">Arm Node</DialogTitle></DialogHeader>
           <form onSubmit={(e) => {
             e.preventDefault();
@@ -1338,7 +1337,7 @@ export default function DashboardPage() {
       </Dialog>
 
       <Dialog open={isEditNodeDialogOpen} onOpenChange={setIsEditNodeDialogOpen}>
-        <DialogContent className="bg-white border border-primary/10 shadow-xl rounded-[2rem] w-[95vw] max-w-md p-6 md:p-10">
+        <DialogContent className="bg-white border border-primary/10 shadow-xl rounded-[2rem] w-[95vw] max-w-md p-6 md:p-10 max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle className="text-lg md:text-xl font-bold uppercase tracking-widest text-secondary mb-6 truncate">Calibrate Node Hardware</DialogTitle></DialogHeader>
           <form onSubmit={(e) => {
             e.preventDefault();
@@ -1396,7 +1395,7 @@ export default function DashboardPage() {
       </Dialog>
 
       <Dialog open={isViewItemDialogOpen} onOpenChange={setIsViewItemDialogOpen}>
-        <DialogContent className="bg-white border border-primary/10 shadow-xl rounded-[2rem] w-[95vw] max-w-md p-6 md:p-10">
+        <DialogContent className="bg-white border border-primary/10 shadow-xl rounded-[2rem] w-[95vw] max-w-md p-6 md:p-10 max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle className="text-lg md:text-xl font-bold uppercase tracking-widest text-secondary mb-6 truncate">Asset Overview</DialogTitle></DialogHeader>
           {itemToView && (
             <div className="space-y-6 md:space-y-8">
@@ -1444,7 +1443,7 @@ export default function DashboardPage() {
       </Dialog>
 
       <Dialog open={isManageGroupsDialogOpen} onOpenChange={setIsManageGroupsDialogOpen}>
-        <DialogContent className="bg-white border border-primary/10 shadow-xl rounded-[2rem] w-[95vw] max-w-md p-6 md:p-10">
+        <DialogContent className="bg-white border border-primary/10 shadow-xl rounded-[2rem] w-[95vw] max-w-md p-6 md:p-10 max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle className="text-lg md:text-xl font-bold uppercase tracking-widest text-secondary mb-6 truncate">Safety Protocols</DialogTitle></DialogHeader>
           <div className="space-y-6 md:space-y-8">
             <div className="flex gap-3">
