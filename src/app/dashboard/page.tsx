@@ -885,19 +885,6 @@ export default function DashboardPage() {
                             </div>
                             <div className="flex flex-wrap gap-3">
                                <Button size="sm" onClick={() => { setActiveSosAlert(n); setIsSosMapOpen(true); }} className="h-8 rounded-lg bg-destructive text-[9px] font-bold uppercase tracking-widest px-6 shadow-lg shadow-destructive/20 text-white flex-1 sm:flex-none">Tactical Map</Button>
-                               {isValidCoordinate(n.latitude) && isValidCoordinate(n.longitude) && (
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    className="h-8 rounded-lg text-[9px] font-bold uppercase tracking-widest px-6 border-destructive/20 text-destructive hover:bg-destructive/5 flex-1 sm:flex-none"
-                                    onClick={() => {
-                                      setMapNotification(n);
-                                      setIsMapModalOpen(true);
-                                    }}
-                                  >
-                                    View
-                                  </Button>
-                               )}
                             </div>
                           </div>
                         )}
@@ -913,7 +900,10 @@ export default function DashboardPage() {
                           </div>
                         )}
                         {(!n.type || (n.type !== 'sos' && n.type !== 'link_request')) && isValidCoordinate(n.latitude) && isValidCoordinate(n.longitude) && (
-                          <div className="ml-0 sm:ml-9 mb-4">
+                          <div className="ml-0 sm:ml-9 mb-4 space-y-3">
+                            <p className="text-[10px] font-mono font-bold opacity-60 flex items-center gap-2">
+                              <Navigation className="h-3 w-3" /> LAT: {n.latitude} | LNG: {n.longitude}
+                            </p>
                             <Button 
                               variant="outline" 
                               size="sm" 
@@ -1021,7 +1011,7 @@ export default function DashboardPage() {
               <iframe
                 width="100%"
                 height="300"
-                className="md:h-[400px]"
+                className="md:h-[400px] max-w-full"
                 style={{ border: 0 }}
                 loading="lazy"
                 allowFullScreen
@@ -1064,7 +1054,7 @@ export default function DashboardPage() {
                </div>
                <div className="space-y-2 lg:col-span-1">
                  <Label className="text-[10px] font-bold uppercase tracking-widest opacity-40">Spatial Coordinates</Label>
-                 <p className="text-[10px] font-mono font-bold text-secondary">{activeSosAlert?.latitude}, {activeSosAlert?.longitude}</p>
+                 <p className="text-[10px] font-mono font-bold text-secondary">LAT: {activeSosAlert?.latitude}<br/>LNG: {activeSosAlert?.longitude}</p>
                </div>
             </div>
             

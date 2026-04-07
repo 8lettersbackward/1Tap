@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useRef, useMemo } from 'react';
@@ -60,6 +61,11 @@ export default function SOSMap({ latitude, longitude, label }: SOSMapProps) {
         .addTo(mapInstance.current)
         .bindPopup(`<b class="text-destructive uppercase font-bold">${label || 'SOS SIGNAL'}</b><br><span class="text-[10px] uppercase font-bold tracking-widest opacity-60">Critical Alert Detected</span>`)
         .openPopup();
+      
+      // Force a resize check for responsiveness in dialogs
+      setTimeout(() => {
+        mapInstance.current?.invalidateSize();
+      }, 200);
     } catch (error) {
       console.warn("Leaflet Map Error:", error);
     }
@@ -74,7 +80,7 @@ export default function SOSMap({ latitude, longitude, label }: SOSMapProps) {
 
   if (!isValid) {
     return (
-      <div className="h-[420px] w-full rounded-xl bg-muted/20 flex flex-col items-center justify-center border-2 border-dashed border-primary/10">
+      <div className="h-[300px] md:h-[420px] w-full rounded-xl bg-muted/20 flex flex-col items-center justify-center border-2 border-dashed border-primary/10">
         <div className="p-8 bg-white/50 rounded-full mb-4">
            <div className="h-10 w-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
         </div>
@@ -87,8 +93,8 @@ export default function SOSMap({ latitude, longitude, label }: SOSMapProps) {
   return (
     <div 
       ref={mapRef} 
-      className="h-[420px] w-full rounded-xl z-10"
-      style={{ isolation: 'isolate' }}
+      className="h-[300px] md:h-[420px] w-full rounded-xl z-10"
+      style={{ isolation: 'isolate', maxWidth: '100%' }}
     />
   );
 }
