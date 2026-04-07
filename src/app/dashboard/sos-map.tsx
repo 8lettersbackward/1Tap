@@ -15,6 +15,8 @@ interface SOSMapProps {
 export default function SOSMap({ latitude, longitude, label }: SOSMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
+  const markerRef = useRef<L.Marker | null>(null);
+  const mounted = useRef(true);
 
   const { lat, lng, isValid } = useMemo(() => {
     const latVal = typeof latitude === 'string' ? parseFloat(latitude) : latitude;
@@ -36,76 +38,93 @@ export default function SOSMap({ latitude, longitude, label }: SOSMapProps) {
     }
   };
 
+  // Initialize Map Instance
   useEffect(() => {
-    if (!mapRef.current || !isValid) return;
-
-    if (mapInstance.current) {
-      mapInstance.current.remove();
-      mapInstance.current = null;
-    }
+    mounted.current = true;
+    if (!mapRef.current || !isValid || mapInstance.current) return;
 
     try {
-      mapInstance.current = L.map(mapRef.current, {
-        zoomControl: false, // Moved to a custom position to avoid overlaps
+      const map = L.map(mapRef.current, {
+        zoomControl: false,
         scrollWheelZoom: true,
         attributionControl: false
       }).setView([lat, lng], 15);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
-      }).addTo(mapInstance.current);
+      }).addTo(map);
 
-      L.control.zoom({ position: 'bottomright' }).addTo(mapInstance.current);
+      L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-      const tacticalIcon = L.divIcon({
-        className: 'tactical-marker',
-        html: `
-          <div class="relative">
-            <div class="absolute -inset-6 bg-destructive/20 rounded-full animate-ping"></div>
-            <div class="absolute -inset-3 bg-destructive/10 rounded-full animate-pulse"></div>
-            <div class="relative h-8 w-8 bg-destructive rounded-full border-2 border-white flex items-center justify-center shadow-lg">
-              <div class="h-2.5 w-2.5 bg-white rounded-full"></div>
-            </div>
-          </div>
-        `,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16]
-      });
+      mapInstance.current = map;
 
-      L.marker([lat, lng], { icon: tacticalIcon })
-        .addTo(mapInstance.current)
-        .bindPopup(`
-          <div class="p-1 min-w-[120px]">
-            <b class="text-destructive uppercase font-bold text-[10px] block mb-1">${label || 'SOS SIGNAL'}</b>
-            <span class="text-[8px] uppercase font-bold tracking-widest opacity-60">Critical Alert Detected</span>
-            <div class="mt-2 text-[8px] font-mono opacity-80">
-              LAT: ${lat.toFixed(4)}<br/>
-              LNG: ${lng.toFixed(4)}
-            </div>
-          </div>
-        `, {
-          closeButton: false,
-          offset: [0, -10],
-          className: 'tactical-popup'
-        })
-        .openPopup();
-      
-      // Force a resize check for responsiveness in dialogs
+      // Initial size fix for dialogs
       setTimeout(() => {
-        if (mapInstance.current) {
+        if (mounted.current && mapInstance.current) {
           mapInstance.current.invalidateSize();
         }
-      }, 500);
+      }, 300);
     } catch (error) {
-      console.warn("Leaflet Map Error:", error);
+      console.warn("Tactical Map Initialization Error:", error);
     }
 
     return () => {
+      mounted.current = false;
       if (mapInstance.current) {
         mapInstance.current.remove();
         mapInstance.current = null;
+        markerRef.current = null;
       }
     };
+  }, []); // Only init once
+
+  // Update Marker and View on Prop Change
+  useEffect(() => {
+    if (!mapInstance.current || !isValid) return;
+
+    const tacticalIcon = L.divIcon({
+      className: 'tactical-marker',
+      html: `
+        <div class="relative">
+          <div class="absolute -inset-6 bg-destructive/20 rounded-full animate-ping"></div>
+          <div class="absolute -inset-3 bg-destructive/10 rounded-full animate-pulse"></div>
+          <div class="relative h-8 w-8 bg-destructive rounded-full border-2 border-white flex items-center justify-center shadow-lg">
+            <div class="h-2.5 w-2.5 bg-white rounded-full"></div>
+          </div>
+        </div>
+      `,
+      iconSize: [32, 32],
+      iconAnchor: [16, 16]
+    });
+
+    const popupContent = `
+      <div class="p-1 min-w-[120px]">
+        <b class="text-destructive uppercase font-bold text-[10px] block mb-1">${label || 'SOS SIGNAL'}</b>
+        <span class="text-[8px] uppercase font-bold tracking-widest opacity-60">Critical Alert Detected</span>
+        <div class="mt-2 text-[8px] font-mono opacity-80">
+          LAT: ${lat.toFixed(4)}<br/>
+          LNG: ${lng.toFixed(4)}
+        </div>
+      </div>
+    `;
+
+    if (markerRef.current) {
+      markerRef.current.setLatLng([lat, lng]).setPopupContent(popupContent);
+    } else {
+      markerRef.current = L.marker([lat, lng], { icon: tacticalIcon })
+        .addTo(mapInstance.current)
+        .bindPopup(popupContent, {
+          closeButton: false,
+          offset: [0, -10],
+          className: 'tactical-popup'
+        });
+      
+      markerRef.current.openPopup();
+    }
+
+    // Move view to follow signal
+    mapInstance.current.panTo([lat, lng], { animate: true });
+
   }, [lat, lng, label, isValid]);
 
   if (!isValid) {
