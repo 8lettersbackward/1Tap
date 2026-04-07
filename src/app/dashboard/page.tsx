@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useUser, useDatabase, useFirebase } from "@/firebase";
@@ -63,7 +64,7 @@ import { useRtdb } from "@/firebase/database/use-rtdb";
 
 const SOSMap = dynamic(() => import("./sos-map"), { 
   ssr: false,
-  loading: () => <div className="h-[420px] w-full bg-muted animate-pulse rounded-lg flex items-center justify-center text-[10px] font-bold uppercase tracking-widest opacity-40">Initializing Terminal Map...</div>
+  loading: () => <div className="h-[300px] md:h-[420px] w-full bg-muted animate-pulse rounded-lg flex items-center justify-center text-[10px] font-bold uppercase tracking-widest opacity-40">Initializing Terminal Map...</div>
 });
 
 type TabType = 'buddies' | 'nodes' | 'notifications' | 'settings' | 'guardian' | 'my-guardians';
@@ -481,8 +482,8 @@ export default function DashboardPage() {
       ];
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-[#e1f1fd] text-[#12086F]">
-      <aside className="w-full md:w-64 bg-white/50 border-r border-primary/10 p-4 sm:p-6 md:h-screen sticky top-0 backdrop-blur-md z-40">
+    <div className="flex flex-col md:flex-row min-h-screen bg-[#e1f1fd] text-[#12086F] overflow-x-hidden">
+      <aside className="w-full md:w-64 bg-white/50 border-r border-primary/10 p-4 sm:p-6 md:h-screen md:sticky top-0 backdrop-blur-md z-40 flex-shrink-0">
         <div className="space-y-8 md:space-y-12">
           <div className="flex items-center gap-4">
             <Avatar className="h-10 w-10 border-2 border-primary">
@@ -501,7 +502,7 @@ export default function DashboardPage() {
                 key={item.id}
                 onClick={() => setActiveTab(item.id as TabType)}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-3 transition-all rounded-xl text-[9px] md:text-[10px] font-bold uppercase tracking-widest relative",
+                  "flex items-center gap-3 px-3 py-3 transition-all rounded-xl text-[9px] md:text-[10px] font-bold uppercase tracking-widest relative min-w-0",
                   activeTab === item.id 
                     ? "bg-primary text-white shadow-lg shadow-primary/20" 
                     : "hover:bg-primary/5 text-muted-foreground"
@@ -521,7 +522,7 @@ export default function DashboardPage() {
         </div>
       </aside>
 
-      <main className="flex-1 p-4 sm:p-6 md:p-10 lg:p-16 overflow-y-auto w-full">
+      <main className="flex-1 p-4 sm:p-6 md:p-10 lg:p-16 overflow-y-auto w-full min-w-0">
         <div className="max-w-6xl mx-auto w-full">
           {activeTab === 'guardian' && userRole === 'guardian' && (
             <div className="space-y-8 md:space-y-10">
@@ -535,7 +536,7 @@ export default function DashboardPage() {
                 </Badge>
               </div>
 
-              <Card className="glass-card border-none p-6 md:p-10 shadow-2xl">
+              <Card className="glass-card border-none p-6 md:p-10 shadow-2xl overflow-hidden">
                 <div className="space-y-8">
                   <div className="space-y-4">
                     <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60 ml-1">Precision Search (Email)</Label>
@@ -550,7 +551,7 @@ export default function DashboardPage() {
                       <Button 
                         onClick={handleSearchManual} 
                         disabled={registerLoading || !searchQuery}
-                        className="rounded-2xl font-bold text-[10px] uppercase tracking-widest h-14 md:h-16 px-12 bg-secondary hover:bg-secondary/90 text-white"
+                        className="rounded-2xl font-bold text-[10px] uppercase tracking-widest h-14 md:h-16 px-12 bg-secondary hover:bg-secondary/90 text-white w-full sm:w-auto"
                       >
                         {registerLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <><UserPlus className="h-5 w-5 mr-3" /> Intercept</>}
                       </Button>
@@ -563,12 +564,12 @@ export default function DashboardPage() {
                 <h2 className="text-xl font-bold tracking-tight text-[#12086F]">ACTIVE PROTOCOLS</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                   {activeLinks.map(link => (
-                    <Card key={link.uid} className="glass-card border-none group transition-all p-6 md:p-8 border-l-4 border-l-secondary">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="max-w-[70%]">
+                    <Card key={link.uid} className="glass-card border-none group transition-all p-6 md:p-8 border-l-4 border-l-secondary overflow-hidden">
+                      <div className="flex justify-between items-start mb-4 gap-2">
+                        <div className="max-w-[70%] min-w-0">
                           <p className="text-lg font-bold text-[#12086F] truncate">{link.email.split('@')[0]}</p>
                         </div>
-                        <Badge className="bg-secondary text-white text-[8px] px-2 py-0.5 rounded-md">LINKED</Badge>
+                        <Badge className="bg-secondary text-white text-[8px] px-2 py-0.5 rounded-md flex-shrink-0">LINKED</Badge>
                       </div>
                       <div className="space-y-3">
                         {link.trackingRequest === 'approved' ? (
@@ -623,7 +624,7 @@ export default function DashboardPage() {
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                     {pendingRequests.map(request => (
-                      <Card key={request.uid} className="glass-card border-none p-6 md:p-8 space-y-6 bg-secondary/5 border-l-4 border-l-destructive animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <Card key={request.uid} className="glass-card border-none p-6 md:p-8 space-y-6 bg-secondary/5 border-l-4 border-l-destructive animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-hidden">
                         <div>
                           <p className="text-lg font-bold text-[#12086F] truncate">{request.email.split('@')[0]}</p>
                           <Badge className="mt-3 bg-secondary text-white text-[8px] uppercase font-bold px-2 py-0.5 rounded-md">Identity: Guardian</Badge>
@@ -649,13 +650,13 @@ export default function DashboardPage() {
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                     {links.filter(l => l.trackingRequest === 'pending').map(link => (
-                      <Card key={link.uid} className="glass-card border-none p-6 md:p-8 bg-accent/5 border-l-4 border-l-accent">
-                        <div className="flex justify-between items-start mb-6">
-                          <div>
+                      <Card key={link.uid} className="glass-card border-none p-6 md:p-8 bg-accent/5 border-l-4 border-l-accent overflow-hidden">
+                        <div className="flex justify-between items-start mb-6 gap-2">
+                          <div className="min-w-0 flex-1">
                             <p className="text-lg font-bold text-[#12086F] truncate">{link.email.split('@')[0]}</p>
                             <Badge className="mt-3 bg-accent text-white text-[8px] uppercase font-bold px-2 py-0.5 rounded-md">Request: Hardware Tracking</Badge>
                           </div>
-                          <Radar className="h-5 w-5 text-accent animate-pulse" />
+                          <Radar className="h-5 w-5 text-accent animate-pulse flex-shrink-0" />
                         </div>
                         <div className="flex gap-3">
                           <Button onClick={() => handleApproveTracking(link)} className="flex-1 bg-accent hover:bg-accent text-white rounded-xl h-10 text-[9px] font-bold uppercase tracking-widest">
@@ -678,12 +679,12 @@ export default function DashboardPage() {
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                     {activeLinks.map(link => (
-                      <Card key={link.uid} className="glass-card border-none p-6 md:p-8 border-l-4 border-l-secondary">
-                        <div className="flex justify-between items-start">
-                          <div className="max-w-[80%]">
+                      <Card key={link.uid} className="glass-card border-none p-6 md:p-8 border-l-4 border-l-secondary overflow-hidden">
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="max-w-[80%] min-w-0 flex-1">
                             <p className="text-lg font-bold text-[#12086F] truncate">{link.email.split('@')[0]}</p>
                             {link.trackingRequest === 'approved' && (
-                              <Badge className="mt-2 bg-accent/20 text-accent border-none text-[8px] font-bold px-2 block w-fit">HARDWARE TRACKING ACTIVE</Badge>
+                              <Badge className="mt-2 bg-accent/20 text-accent border-none text-[8px] font-bold px-2 block w-fit truncate">HARDWARE TRACKING ACTIVE</Badge>
                             )}
                           </div>
                           <UserCheck className="h-5 w-5 text-secondary flex-shrink-0" />
@@ -736,12 +737,12 @@ export default function DashboardPage() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                   {buddies.map(buddy => (
-                    <Card key={buddy.id} className="glass-card border-none group transition-all">
+                    <Card key={buddy.id} className="glass-card border-none group transition-all overflow-hidden">
                       <CardHeader className="p-6 md:p-8">
-                        <div className="flex justify-between items-start mb-6">
-                          <div className="max-w-[90%]">
+                        <div className="flex justify-between items-start mb-6 gap-2">
+                          <div className="min-w-0 flex-1">
                             <p className="text-xl font-bold text-[#12086F] truncate">{buddy.name}</p>
-                            <p className="text-[10px] font-mono text-secondary uppercase tracking-widest mt-1">{buddy.phoneNumber}</p>
+                            <p className="text-[10px] font-mono text-secondary uppercase tracking-widest mt-1 truncate">{buddy.phoneNumber}</p>
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -754,7 +755,7 @@ export default function DashboardPage() {
                         <div className="flex flex-wrap gap-2 pt-6 border-t border-primary/10">
                           <Button variant="ghost" size="sm" className="h-10 rounded-xl text-[9px] font-bold uppercase tracking-widest flex-1 bg-primary/5 min-w-[70px]" onClick={() => { setItemToView(buddy); setIsViewItemDialogOpen(true); }}><Eye className="h-3.5 w-3.5 mr-2" /> View</Button>
                           <Button variant="ghost" size="sm" className="h-10 rounded-xl text-[9px] font-bold uppercase tracking-widest flex-1 bg-primary text-white min-w-[70px]" onClick={() => { setItemToEdit(buddy); setIsEditBuddyDialogOpen(true); }}><Pencil className="h-3.5 w-3.5 mr-2" /> Edit</Button>
-                          <Button variant="ghost" size="sm" className="h-10 rounded-xl text-destructive hover:bg-destructive/5" onClick={() => { setItemToDelete({ ...buddy, type: 'buddy' }); setIsDeleteDialogOpen(true); }}><Trash2 className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="sm" className="h-10 rounded-xl text-destructive hover:bg-destructive/5 flex-shrink-0" onClick={() => { setItemToDelete({ ...buddy, type: 'buddy' }); setIsDeleteDialogOpen(true); }}><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       </CardContent>
                     </Card>
@@ -781,12 +782,12 @@ export default function DashboardPage() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                   {nodes.map(node => (
-                    <Card key={node.id} className="glass-card border-none group transition-all">
+                    <Card key={node.id} className="glass-card border-none group transition-all overflow-hidden">
                       <CardHeader className="p-6 md:p-8">
-                        <div className="flex justify-between items-center mb-4">
-                          <div className="max-w-[80%]">
+                        <div className="flex justify-between items-center mb-4 gap-2">
+                          <div className="min-w-0 flex-1">
                             <p className="text-xl font-bold text-[#12086F] truncate">{node.nodeName}</p>
-                            {node.phoneNumber && <p className="text-[9px] font-mono text-secondary mt-1 uppercase tracking-widest">{node.phoneNumber}</p>}
+                            {node.phoneNumber && <p className="text-[9px] font-mono text-secondary mt-1 uppercase tracking-widest truncate">{node.phoneNumber}</p>}
                           </div>
                           <div className={cn("h-3 w-3 rounded-full flex-shrink-0", node.status === 'online' ? 'bg-secondary shadow-[0_0_15px_rgba(72,149,239,0.4)]' : 'bg-muted')} />
                         </div>
@@ -794,9 +795,9 @@ export default function DashboardPage() {
                       </CardHeader>
                       <CardContent className="p-6 md:p-8 pt-0 space-y-6">
                         <div className="space-y-4">
-                          <div className="flex justify-between items-center">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60 flex items-center gap-2"><Thermometer className="h-3 w-3" /> Thermal Threshold</Label>
-                            <span className="text-[10px] font-mono font-bold text-secondary">{node.temperature || 24}°C</span>
+                          <div className="flex justify-between items-center gap-2">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60 flex items-center gap-2 whitespace-nowrap"><Thermometer className="h-3 w-3" /> Thermal Threshold</Label>
+                            <span className="text-[10px] font-mono font-bold text-secondary flex-shrink-0">{node.temperature || 24}°C</span>
                           </div>
                           <Slider 
                             defaultValue={[node.temperature || 24]} 
@@ -819,7 +820,7 @@ export default function DashboardPage() {
                         <div className="flex flex-wrap gap-2 pt-6 border-t border-primary/10">
                           <Button variant="ghost" size="sm" className="h-10 rounded-xl text-[9px] font-bold uppercase tracking-widest flex-1 bg-primary/5 min-w-[70px]" onClick={() => { setItemToView(node); setIsViewItemDialogOpen(true); }}><Eye className="h-3.5 w-3.5 mr-2" /> View</Button>
                           <Button variant="ghost" size="sm" className="h-10 rounded-xl text-[9px] font-bold uppercase tracking-widest flex-1 bg-primary text-white min-w-[70px]" onClick={() => { setItemToEdit(node); setIsEditNodeDialogOpen(true); }}><Pencil className="h-3.5 w-3.5 mr-2" /> Edit</Button>
-                          <Button variant="ghost" size="sm" className="h-10 rounded-xl text-destructive hover:bg-destructive/5" onClick={() => { setItemToDelete({ ...node, type: 'node' }); setIsDeleteDialogOpen(true); }}><Trash2 className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="sm" className="h-10 rounded-xl text-destructive hover:bg-destructive/5 flex-shrink-0" onClick={() => { setItemToDelete({ ...node, type: 'node' }); setIsDeleteDialogOpen(true); }}><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       </CardContent>
                     </Card>
@@ -843,7 +844,7 @@ export default function DashboardPage() {
                   </Button>
                 )}
               </div>
-              <Card className="glass-card border-none">
+              <Card className="glass-card border-none overflow-hidden">
                 <ScrollArea className="h-[500px] md:h-[600px] p-4 sm:p-8">
                   {notifications.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-[300px] md:h-[400px] opacity-10">
@@ -854,21 +855,21 @@ export default function DashboardPage() {
                     notifications.map(n => (
                       <div key={n.id} className={cn("mb-6 md:mb-8 pb-6 md:pb-8 border-b border-primary/5 last:border-0 last:mb-0", n.type === 'sos' && "bg-destructive/5 -mx-4 px-4 rounded-xl", n.type === 'link_request' && "bg-secondary/5 -mx-4 px-4 rounded-xl")}>
                         <div className="flex flex-col sm:flex-row justify-between items-start gap-3 mb-3">
-                          <div className="flex gap-4 items-center overflow-hidden">
+                          <div className="flex gap-4 items-center min-w-0 flex-1">
                             {n.type === 'sos' && <AlertTriangle className="h-5 w-5 text-destructive animate-pulse flex-shrink-0" />}
                             {n.type === 'link_request' && <UserPlus className="h-5 w-5 text-secondary flex-shrink-0" />}
-                            <p className={cn("text-sm md:text-md font-bold tracking-wide truncate", n.type === 'sos' && "text-destructive uppercase", n.type === 'link_request' && "text-secondary")}>
+                            <p className={cn("text-sm md:text-md font-bold tracking-wide truncate flex-1", n.type === 'sos' && "text-destructive uppercase", n.type === 'link_request' && "text-secondary")}>
                               {n.type === 'sos' ? `🚨 SOS ALERT - ${n.nodeName || 'UNIDENTIFIED'}` : n.message}
                             </p>
                           </div>
-                          <Badge variant="outline" className={cn("text-[8px] md:text-[9px] font-bold px-3 bg-white/50 w-fit", n.type === 'sos' ? "border-destructive/40 text-destructive" : "border-secondary/40 text-secondary")}>
+                          <Badge variant="outline" className={cn("text-[8px] md:text-[9px] font-bold px-3 bg-white/50 flex-shrink-0 self-end sm:self-center", n.type === 'sos' ? "border-destructive/40 text-destructive" : "border-secondary/40 text-secondary")}>
                             {safeFormatTime(n.createdAt)}
                           </Badge>
                         </div>
                         {n.type === 'sos' && (
                           <div className="space-y-4 mb-4 ml-0 sm:ml-9">
                             <p className="text-xs font-medium text-destructive/80">Trigger: {n.trigger || 'Manual SOS'}</p>
-                            <p className="text-xs font-medium opacity-60 flex items-center gap-2"><MapPin className="h-3 w-3" /> {n.place || 'Location Coordinates Acquired'}</p>
+                            <p className="text-xs font-medium opacity-60 flex items-center gap-2 truncate"><MapPin className="h-3 w-3" /> {n.place || 'Location Coordinates Acquired'}</p>
                             <div className="flex flex-wrap gap-3">
                                <Button size="sm" onClick={() => { setActiveSosAlert(n); setIsSosMapOpen(true); }} className="h-8 rounded-lg bg-destructive text-[9px] font-bold uppercase tracking-widest px-6 shadow-lg shadow-destructive/20 text-white flex-1 sm:flex-none">Tactical Map</Button>
                                {isValidCoordinate(n.latitude) && isValidCoordinate(n.longitude) && (
@@ -925,7 +926,7 @@ export default function DashboardPage() {
           {activeTab === 'settings' && (
             <div className="max-w-md w-full space-y-8 md:space-y-10 mx-auto lg:mx-0">
               <h1 className="text-3xl md:text-4xl font-bold tracking-tighter text-[#12086F]">PROFILE SETTINGS</h1>
-              <Card className="glass-card border-none p-6 md:p-10 space-y-8">
+              <Card className="glass-card border-none p-6 md:p-10 space-y-8 overflow-hidden">
                 <div className="p-6 bg-primary/5 rounded-2xl border border-primary/10">
                   <p className="text-[10px] font-bold text-secondary uppercase tracking-widest mb-2">Auth Identification</p>
                   <p className="text-[10px] font-mono opacity-60 truncate">{user.uid}</p>
@@ -946,8 +947,8 @@ export default function DashboardPage() {
           <DialogHeader className="p-6 md:p-10 border-b border-accent/5 bg-accent/5">
              <div className="flex justify-between items-center">
                <div className="flex items-center gap-4">
-                  <Radar className="h-6 w-6 md:h-8 md:w-8 text-accent animate-pulse" />
-                  <DialogTitle className="text-md md:text-xl font-bold uppercase tracking-widest text-[#12086F]">Asset Control Hub</DialogTitle>
+                  <Radar className="h-6 w-6 md:h-8 md:w-8 text-accent animate-pulse flex-shrink-0" />
+                  <DialogTitle className="text-md md:text-xl font-bold uppercase tracking-widest text-[#12086F] truncate">Asset Control Hub</DialogTitle>
                </div>
              </div>
           </DialogHeader>
@@ -962,7 +963,7 @@ export default function DashboardPage() {
                   {activeTrackedNodes.map(node => (
                     <div key={node.id} className="p-6 md:p-10 space-y-6">
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                        <div className="max-w-full overflow-hidden">
+                        <div className="max-w-full overflow-hidden flex-1">
                            <p className="text-lg font-bold text-[#12086F] truncate">{node.nodeName}</p>
                            <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest truncate">ID: {node.hardwareId}</p>
                         </div>
@@ -1000,7 +1001,7 @@ export default function DashboardPage() {
       <Dialog open={isMapModalOpen} onOpenChange={setIsMapModalOpen}>
         <DialogContent className="bg-white border-none shadow-2xl rounded-[2rem] w-[95vw] max-w-3xl p-0 overflow-hidden">
           <DialogHeader className="p-6 md:p-8 border-b border-primary/5">
-            <DialogTitle className="text-lg md:text-xl font-bold uppercase tracking-widest text-secondary">Spatial Coordinate Intercept</DialogTitle>
+            <DialogTitle className="text-lg md:text-xl font-bold uppercase tracking-widest text-secondary truncate">Spatial Coordinate Intercept</DialogTitle>
           </DialogHeader>
           <div className="p-0">
             {mapNotification && isValidCoordinate(mapNotification.latitude) && isValidCoordinate(mapNotification.longitude) && (
@@ -1028,21 +1029,21 @@ export default function DashboardPage() {
         <DialogContent className="bg-white border-2 border-destructive/20 shadow-2xl rounded-[2rem] w-[95vw] max-w-2xl p-0 overflow-hidden">
           <DialogHeader className="p-6 md:p-10 border-b border-destructive/5 bg-destructive/5">
              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-               <div className="flex items-center gap-4 overflow-hidden">
+               <div className="flex items-center gap-4 overflow-hidden flex-1">
                   <AlertTriangle className="h-6 w-6 md:h-8 md:w-8 text-destructive animate-bounce flex-shrink-0" />
                   <div className="overflow-hidden">
                     <DialogTitle className="text-xl md:text-2xl font-bold text-destructive uppercase tracking-tighter truncate">Tactical SOS Intercept</DialogTitle>
                     <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 truncate">Master Signal: {activeSosAlert?.nodeName || 'Hardware Node'}</p>
                   </div>
                </div>
-               <Badge className="bg-destructive text-white border-none text-[10px] font-bold uppercase px-4 py-2 rounded-xl animate-pulse">Critical Alert</Badge>
+               <Badge className="bg-destructive text-white border-none text-[10px] font-bold uppercase px-4 py-2 rounded-xl animate-pulse flex-shrink-0">Critical Alert</Badge>
              </div>
           </DialogHeader>
           <div className="p-6 md:p-10 space-y-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
                <div className="space-y-2">
                  <Label className="text-[10px] font-bold uppercase tracking-widest opacity-40">Trigger Source</Label>
-                 <p className="text-sm font-bold text-destructive">{activeSosAlert?.trigger || 'Security Protocol 1-TAP'}</p>
+                 <p className="text-sm font-bold text-destructive truncate">{activeSosAlert?.trigger || 'Security Protocol 1-TAP'}</p>
                </div>
                <div className="space-y-2">
                  <Label className="text-[10px] font-bold uppercase tracking-widest opacity-40">Timestamp</Label>
@@ -1074,7 +1075,7 @@ export default function DashboardPage() {
 
       <Dialog open={isAddBuddyDialogOpen} onOpenChange={setIsAddBuddyDialogOpen}>
         <DialogContent className="bg-white border border-primary/10 shadow-xl rounded-[2rem] w-[95vw] max-w-md p-6 md:p-10">
-          <DialogHeader><DialogTitle className="text-lg md:text-xl font-bold uppercase tracking-widest text-secondary mb-6">Enlist Buddy</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="text-lg md:text-xl font-bold uppercase tracking-widest text-secondary mb-6 truncate">Enlist Buddy</DialogTitle></DialogHeader>
           <form onSubmit={(e) => {
             e.preventDefault();
             if (!user || !rtdb) return;
@@ -1101,11 +1102,11 @@ export default function DashboardPage() {
               <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60 ml-1">Protocol Groups</Label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 md:p-6 bg-primary/5 rounded-2xl border border-primary/10">
                 {buddyGroups.map(g => (
-                  <div key={g} className="flex items-center gap-3">
+                  <div key={g} className="flex items-center gap-3 min-w-0">
                     <Checkbox checked={buddyForm.groups.includes(g)} onCheckedChange={() => {
                       const updated = buddyForm.groups.includes(g) ? buddyForm.groups.filter(x => x !== g) : [...buddyForm.groups, g];
                       setBuddyForm({...buddyForm, groups: updated});
-                    }} className="rounded-md border-primary/20 data-[state=checked]:bg-primary" />
+                    }} className="rounded-md border-primary/20 data-[state=checked]:bg-primary flex-shrink-0" />
                     <span className="text-[10px] font-bold uppercase tracking-widest opacity-70 truncate">{g}</span>
                   </div>
                 ))}
@@ -1120,7 +1121,7 @@ export default function DashboardPage() {
 
       <Dialog open={isEditBuddyDialogOpen} onOpenChange={setIsEditBuddyDialogOpen}>
         <DialogContent className="bg-white border border-primary/10 shadow-xl rounded-[2rem] w-[95vw] max-w-md p-6 md:p-10">
-          <DialogHeader><DialogTitle className="text-lg md:text-xl font-bold uppercase tracking-widest text-secondary mb-6">Recalibrate Buddy Protocol</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="text-lg md:text-xl font-bold uppercase tracking-widest text-secondary mb-6 truncate">Recalibrate Buddy Protocol</DialogTitle></DialogHeader>
           <form onSubmit={(e) => {
             e.preventDefault();
             if (!user || !rtdb || !itemToEdit) return;
@@ -1146,11 +1147,11 @@ export default function DashboardPage() {
               <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60 ml-1">Protocol Groups</Label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 md:p-6 bg-primary/5 rounded-2xl border border-primary/10">
                 {buddyGroups.map(g => (
-                  <div key={g} className="flex items-center gap-3">
+                  <div key={g} className="flex items-center gap-3 min-w-0">
                     <Checkbox checked={buddyForm.groups.includes(g)} onCheckedChange={() => {
                       const updated = buddyForm.groups.includes(g) ? buddyForm.groups.filter(x => x !== g) : [...buddyForm.groups, g];
                       setBuddyForm({...buddyForm, groups: updated});
-                    }} className="rounded-md border-primary/20 data-[state=checked]:bg-primary" />
+                    }} className="rounded-md border-primary/20 data-[state=checked]:bg-primary flex-shrink-0" />
                     <span className="text-[10px] font-bold uppercase tracking-widest opacity-70 truncate">{g}</span>
                   </div>
                 ))}
@@ -1165,7 +1166,7 @@ export default function DashboardPage() {
 
       <Dialog open={isAddNodeDialogOpen} onOpenChange={setIsAddNodeDialogOpen}>
         <DialogContent className="bg-white border border-primary/10 shadow-xl rounded-[2rem] w-[95vw] max-w-md p-6 md:p-10">
-          <DialogHeader><DialogTitle className="text-lg md:text-xl font-bold uppercase tracking-widest text-secondary mb-6">Arm Node</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="text-lg md:text-xl font-bold uppercase tracking-widest text-secondary mb-6 truncate">Arm Node</DialogTitle></DialogHeader>
           <form onSubmit={(e) => {
             e.preventDefault();
             if (!user || !rtdb) return;
@@ -1200,11 +1201,11 @@ export default function DashboardPage() {
               <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60 ml-1">Broadcast Targets</Label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 md:p-6 bg-primary/5 rounded-2xl border border-primary/10">
                 {buddyGroups.map(g => (
-                  <div key={g} className="flex items-center gap-3">
+                  <div key={g} className="flex items-center gap-3 min-w-0">
                     <Checkbox checked={nodeForm.targetGroups.includes(g)} onCheckedChange={() => {
                       const updated = nodeForm.targetGroups.includes(g) ? nodeForm.targetGroups.filter(x => x !== g) : [...nodeForm.targetGroups, g];
                       setNodeForm({...nodeForm, targetGroups: updated});
-                    }} className="rounded-md border-primary/20 data-[state=checked]:bg-primary" />
+                    }} className="rounded-md border-primary/20 data-[state=checked]:bg-primary flex-shrink-0" />
                     <span className="text-[10px] font-bold uppercase tracking-widest opacity-70 truncate">{g}</span>
                   </div>
                 ))}
@@ -1219,7 +1220,7 @@ export default function DashboardPage() {
 
       <Dialog open={isEditNodeDialogOpen} onOpenChange={setIsEditNodeDialogOpen}>
         <DialogContent className="bg-white border border-primary/10 shadow-xl rounded-[2rem] w-[95vw] max-w-md p-6 md:p-10">
-          <DialogHeader><DialogTitle className="text-lg md:text-xl font-bold uppercase tracking-widest text-secondary mb-6">Calibrate Node Hardware</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="text-lg md:text-xl font-bold uppercase tracking-widest text-secondary mb-6 truncate">Calibrate Node Hardware</DialogTitle></DialogHeader>
           <form onSubmit={(e) => {
             e.preventDefault();
             if (!user || !rtdb || !itemToEdit) return;
@@ -1258,11 +1259,11 @@ export default function DashboardPage() {
               <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60 ml-1">Broadcast Targets</Label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 md:p-6 bg-primary/5 rounded-2xl border border-primary/10">
                 {buddyGroups.map(g => (
-                  <div key={g} className="flex items-center gap-3">
+                  <div key={g} className="flex items-center gap-3 min-w-0">
                     <Checkbox checked={nodeForm.targetGroups.includes(g)} onCheckedChange={() => {
                       const updated = nodeForm.targetGroups.includes(g) ? nodeForm.targetGroups.filter(x => x !== g) : [...nodeForm.targetGroups, g];
                       setNodeForm({...nodeForm, targetGroups: updated});
-                    }} className="rounded-md border-primary/20 data-[state=checked]:bg-primary" />
+                    }} className="rounded-md border-primary/20 data-[state=checked]:bg-primary flex-shrink-0" />
                     <span className="text-[10px] font-bold uppercase tracking-widest opacity-70 truncate">{g}</span>
                   </div>
                 ))}
@@ -1277,10 +1278,10 @@ export default function DashboardPage() {
 
       <Dialog open={isViewItemDialogOpen} onOpenChange={setIsViewItemDialogOpen}>
         <DialogContent className="bg-white border border-primary/10 shadow-xl rounded-[2rem] w-[95vw] max-w-md p-6 md:p-10">
-          <DialogHeader><DialogTitle className="text-lg md:text-xl font-bold uppercase tracking-widest text-secondary mb-6">Asset Overview</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="text-lg md:text-xl font-bold uppercase tracking-widest text-secondary mb-6 truncate">Asset Overview</DialogTitle></DialogHeader>
           {itemToView && (
             <div className="space-y-6 md:space-y-8">
-              <div className="p-6 md:p-8 bg-primary/5 rounded-3xl border border-primary/10 space-y-4">
+              <div className="p-6 md:p-8 bg-primary/5 rounded-3xl border border-primary/10 space-y-4 overflow-hidden">
                 <div className="flex justify-between items-center gap-2">
                   <span className="text-[10px] uppercase font-bold opacity-40 tracking-widest flex-shrink-0">Descriptor</span>
                   <span className="text-sm font-bold text-[#12086F] truncate">{itemToView.nodeName || itemToView.name}</span>
@@ -1307,14 +1308,14 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 sm:gap-2">
                   <span className="text-[10px] uppercase font-bold opacity-40 tracking-widest flex-shrink-0">Link Created</span>
-                  <span className="text-[10px] opacity-60 font-bold">{safeFormatDate(itemToView.registeredAt)} {safeFormatTime(itemToView.registeredAt)}</span>
+                  <span className="text-[10px] opacity-60 font-bold whitespace-nowrap">{safeFormatDate(itemToView.registeredAt)} {safeFormatTime(itemToView.registeredAt)}</span>
                 </div>
               </div>
-              <div className="p-6 md:p-8 bg-primary/5 rounded-3xl border border-primary/10">
+              <div className="p-6 md:p-8 bg-primary/5 rounded-3xl border border-primary/10 overflow-hidden">
                 <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-secondary mb-4 md:mb-6">Authorized Protocols</p>
                 <div className="flex flex-wrap gap-2">
                   {(itemToView.targetGroups || itemToView.groups || []).map((g: string) => (
-                    <Badge key={g} variant="outline" className="bg-white/50 border-primary/10 text-[9px] px-4 py-1.5 opacity-80 uppercase font-bold text-primary">{g}</Badge>
+                    <Badge key={g} variant="outline" className="bg-white/50 border-primary/10 text-[9px] px-4 py-1.5 opacity-80 uppercase font-bold text-primary truncate max-w-full">{g}</Badge>
                   ))}
                 </div>
               </div>
@@ -1325,10 +1326,10 @@ export default function DashboardPage() {
 
       <Dialog open={isManageGroupsDialogOpen} onOpenChange={setIsManageGroupsDialogOpen}>
         <DialogContent className="bg-white border border-primary/10 shadow-xl rounded-[2rem] w-[95vw] max-w-md p-6 md:p-10">
-          <DialogHeader><DialogTitle className="text-lg md:text-xl font-bold uppercase tracking-widest text-secondary mb-6">Safety Protocols</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="text-lg md:text-xl font-bold uppercase tracking-widest text-secondary mb-6 truncate">Safety Protocols</DialogTitle></DialogHeader>
           <div className="space-y-6 md:space-y-8">
             <div className="flex gap-3">
-              <Input value={newGroupName} onChange={e => setNewGroupName(e.target.value)} placeholder="Protocol Name" className="bg-primary/5 border-primary/10 rounded-2xl h-14 text-sm font-bold uppercase tracking-widest" />
+              <Input value={newGroupName} onChange={e => setNewGroupName(e.target.value)} placeholder="Protocol Name" className="bg-primary/5 border-primary/10 rounded-2xl h-14 text-sm font-bold uppercase tracking-widest flex-1 min-w-0" />
               <Button onClick={() => {
                 if (!user || !newGroupName) return;
                 push(ref(rtdb, `users/${user.uid}/buddyGroups`), { name: newGroupName });
@@ -1339,10 +1340,10 @@ export default function DashboardPage() {
             <ScrollArea className="h-64 pr-4">
               <div className="space-y-3">
                 {buddyGroups.map(g => (
-                  <div key={g} className="p-5 bg-primary/5 rounded-2xl flex justify-between items-center group/item transition-all border border-transparent">
-                    <span className="text-[10px] font-bold uppercase tracking-widest truncate max-w-[70%]">{g}</span>
+                  <div key={g} className="p-5 bg-primary/5 rounded-2xl flex justify-between items-center group/item transition-all border border-transparent overflow-hidden gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-widest truncate flex-1">{g}</span>
                     {!DEFAULT_BUDDY_GROUPS.includes(g) && (
-                      <Button variant="ghost" size="sm" className="h-10 w-10 rounded-xl text-destructive hover:bg-destructive/5" onClick={() => {
+                      <Button variant="ghost" size="sm" className="h-10 w-10 rounded-xl text-destructive hover:bg-destructive/5 flex-shrink-0" onClick={() => {
                         const gId = Object.entries(customGroupsData || {}).find(([k, v]: any) => v.name === g)?.[0];
                         if (gId) {
                           remove(ref(rtdb, `users/${user.uid}/buddyGroups/${gId}`));
