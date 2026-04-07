@@ -926,7 +926,7 @@ export default function DashboardPage() {
           {activeTab === 'settings' && (
             <div className="max-w-md w-full space-y-8 md:space-y-10 mx-auto lg:mx-0">
               <h1 className="text-3xl md:text-4xl font-bold tracking-tighter text-[#12086F]">PROFILE SETTINGS</h1>
-              <Card className="glass-card border-none p-6 md:p-10 space-y-8 overflow-hidden">
+              <Card className="bg-white border-none p-6 md:p-10 space-y-8 overflow-hidden shadow-2xl">
                 <div className="p-6 bg-primary/5 rounded-2xl border border-primary/10">
                   <p className="text-[10px] font-bold text-secondary uppercase tracking-widest mb-2">Auth Identification</p>
                   <p className="text-[10px] font-mono opacity-60 truncate">{user.uid}</p>
