@@ -422,7 +422,6 @@ export default function DashboardPage() {
       }
     });
 
-    // We store unsubscribe to clean up if needed, but since it's a dialog we'll handle closing
     return unsubscribe;
   };
 
@@ -432,7 +431,7 @@ export default function DashboardPage() {
     update(ref(rtdb, nodePath), { trackRequest: !currentStatus });
     toast({ 
       title: !currentStatus ? "Track Signal Dispatched" : "Track Signal Suspended",
-      description: !currentStatus ? "Requesting real-time telemetry from node." : "Telemetry request terminated."
+      description: !currentStatus ? "Requesting hardware telemetry broadcast." : "Telemetry request terminated."
     });
   };
 
@@ -569,7 +568,7 @@ export default function DashboardPage() {
                             className="w-full bg-accent hover:bg-accent text-white rounded-xl h-10 text-[9px] font-bold uppercase tracking-widest"
                             onClick={() => handleOpenTelemetry(link.uid)}
                           >
-                            <Radio className="h-3.5 w-3.5 mr-2" /> Track Assets
+                            <Radar className="h-3.5 w-3.5 mr-2" /> Track Assets
                           </Button>
                         ) : link.trackingRequest === 'requested' ? (
                           <Button disabled className="w-full bg-muted text-muted-foreground rounded-xl h-10 text-[9px] font-bold uppercase tracking-widest">
@@ -591,18 +590,6 @@ export default function DashboardPage() {
                           Terminate Link
                         </Button>
                       </div>
-                    </Card>
-                  ))}
-                  {links.filter(l => l.status === 'requested').map(link => (
-                    <Card key={link.uid} className="glass-card border-none group transition-all p-8 opacity-60">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <p className="text-lg font-bold text-[#12086F] truncate">{link.email.split('@')[0]}</p>
-                          <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest truncate">{link.email}</p>
-                        </div>
-                        <Badge variant="outline" className="text-[8px] px-2 py-0.5 rounded-md">PENDING</Badge>
-                      </div>
-                      <p className="text-[8px] font-bold uppercase tracking-widest opacity-60 text-center">Awaiting Approval</p>
                     </Card>
                   ))}
                 </div>
@@ -1012,27 +999,6 @@ export default function DashboardPage() {
                             </div>
                          </div>
                       </div>
-
-                      {node.trackRequest && (
-                        <div className="rounded-2xl overflow-hidden border border-accent/10 relative h-[300px]">
-                          {isValidCoordinate(node.latitude) && isValidCoordinate(node.longitude) ? (
-                            <iframe
-                              width="100%"
-                              height="100%"
-                              style={{ border: 0 }}
-                              loading="lazy"
-                              allowFullScreen
-                              referrerPolicy="no-referrer-when-downgrade"
-                              src={`https://www.google.com/maps?q=${node.latitude},${node.longitude}&output=embed`}
-                            ></iframe>
-                          ) : (
-                            <div className="h-full w-full bg-muted/10 flex flex-col items-center justify-center">
-                              <Radar className="h-10 w-10 text-accent/20 mb-4 animate-pulse" />
-                              <p className="text-[10px] font-bold uppercase tracking-widest opacity-40 text-center px-10">Awaiting Signal Fix...<br/>GPS Hardware Initializing</p>
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
@@ -1435,4 +1401,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
