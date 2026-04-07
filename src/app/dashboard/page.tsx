@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useUser, useDatabase, useFirebase } from "@/firebase";
@@ -87,6 +88,8 @@ export default function DashboardPage() {
   const [registerLoading, setRegisterLoading] = useState(false);
   const [vaultClearedAt, setVaultClearedAt] = useState(0);
   const [userRole, setUserRole] = useState<string | null>(null);
+
+  const trackingTimers = useRef<Record<string, any>>({});
 
   const [buddyForm, setBuddyForm] = useState({
     name: '',
@@ -186,7 +189,6 @@ export default function DashboardPage() {
     }
   }, [user, rtdb]);
 
-  // Sync edit forms
   useEffect(() => {
     if (itemToEdit && activeTab === 'buddies') {
       setBuddyForm({
@@ -301,7 +303,6 @@ export default function DashboardPage() {
     const now = Date.now();
     const updates: any = {};
     
-    // Core Link Records
     updates[`users/${targetUser.uid}/links/${user.uid}`] = {
       status: 'pending',
       email: user.email,
@@ -315,7 +316,6 @@ export default function DashboardPage() {
       createdAt: now
     };
 
-    // Alert Target User
     const notificationRef = ref(rtdb, `users/${targetUser.uid}/notifications`);
     const newNotifKey = push(notificationRef).key;
     if (newNotifKey) {
@@ -428,11 +428,35 @@ export default function DashboardPage() {
   const handleToggleNodeTrack = (nodeId: string, currentStatus: boolean) => {
     if (!rtdb || !telemetryTargetUid) return;
     const nodePath = `users/${telemetryTargetUid}/nodes/${nodeId}`;
-    update(ref(rtdb, nodePath), { trackRequest: !currentStatus });
-    toast({ 
-      title: !currentStatus ? "Track Signal Dispatched" : "Track Signal Suspended",
-      description: !currentStatus ? "Requesting hardware telemetry broadcast." : "Telemetry request terminated."
-    });
+    const newStatus = !currentStatus;
+
+    if (trackingTimers.current[nodeId]) {
+      clearTimeout(trackingTimers.current[nodeId]);
+      delete trackingTimers.current[nodeId];
+    }
+
+    update(ref(rtdb, nodePath), { trackRequest: newStatus });
+    
+    if (newStatus) {
+      toast({ 
+        title: "Track Signal Dispatched",
+        description: "Requesting hardware telemetry broadcast (10s window)."
+      });
+
+      trackingTimers.current[nodeId] = setTimeout(() => {
+        update(ref(rtdb, nodePath), { trackRequest: false });
+        toast({
+          title: "Signal Window Closed",
+          description: `Tracking for node ${nodeId} has timed out.`
+        });
+        delete trackingTimers.current[nodeId];
+      }, 10000);
+    } else {
+      toast({ 
+        title: "Track Signal Suspended",
+        description: "Telemetry request terminated manually."
+      });
+    }
   };
 
   const safeFormatTime = (ts: any) => {
