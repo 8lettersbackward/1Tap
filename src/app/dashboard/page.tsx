@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useUser, useDatabase, useFirebase } from "@/firebase";
@@ -115,6 +116,7 @@ export default function DashboardPage() {
 
   const [isAddBuddyDialogOpen, setIsAddBuddyDialogOpen] = useState(false);
   const [isAddNodeDialogOpen, setIsAddNodeDialogOpen] = useState(false);
+  const [isAddBuddyDialogOpenOnMobile, setIsAddBuddyDialogOpenOnMobile] = useState(false);
   const [isEditBuddyDialogOpen, setIsEditBuddyDialogOpen] = useState(false);
   const [isEditNodeDialogOpen, setIsEditNodeDialogOpen] = useState(false);
   const [isViewItemDialogOpen, setIsViewItemDialogOpen] = useState(false);
@@ -1110,19 +1112,14 @@ export default function DashboardPage() {
             <DialogTitle className="text-md sm:text-lg md:text-xl font-bold uppercase tracking-widest text-secondary truncate min-w-0">Spatial Coordinate Intercept</DialogTitle>
           </DialogHeader>
           <div className="flex-1 overflow-hidden relative">
-            <ScrollArea className="h-full">
+             <ScrollArea className="h-full">
               {mapNotification && isValidCoordinate(mapNotification.latitude) && isValidCoordinate(mapNotification.longitude) && (
-                <div className="relative">
-                  <iframe
-                    width="100%"
-                    height="300"
-                    className="md:h-[400px] max-w-full"
-                    style={{ border: 0 }}
-                    loading="lazy"
-                    allowFullScreen
-                    referrerPolicy="no-referrer-when-downgrade"
-                    src={`https://www.google.com/maps?q=${mapNotification.latitude},${mapNotification.longitude}&output=embed`}
-                  ></iframe>
+                <div className="flex flex-col h-full">
+                  <SOSMap 
+                      latitude={mapNotification.latitude} 
+                      longitude={mapNotification.longitude}
+                      label={mapNotification.message || "SIGNAL INTERCEPT"}
+                  />
                   {mapNotification.place && (
                     <div className="p-4 md:p-6 bg-white/80 backdrop-blur-md border-t border-primary/10 flex items-center gap-3">
                         <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
