@@ -141,8 +141,12 @@ export default function DashboardPage() {
     if (savedClearedAt) {
       setVaultClearedAt(parseInt(savedClearedAt));
     }
-    if (!userLoading && !user) {
-      router.push("/login");
+    if (!userLoading) {
+      if (!user) {
+        router.push("/login");
+      } else if (!user.emailVerified) {
+        router.push("/verify-email");
+      }
     }
     
     if (user && rtdb) {
@@ -160,7 +164,7 @@ export default function DashboardPage() {
   }, [user, userLoading, router, rtdb]);
 
   useEffect(() => {
-    if (rtdb && user) {
+    if (rtdb && user && user.emailVerified) {
       const usersRef = ref(rtdb, 'users');
       const unsubscribe = onValue(usersRef, (snapshot) => {
         const data = snapshot.val();
@@ -200,23 +204,23 @@ export default function DashboardPage() {
     }
   }, [itemToEdit, activeTab]);
 
-  const groupsRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/buddyGroups`) : null, [rtdb, user]);
+  const groupsRef = useMemo(() => user && user.emailVerified ? ref(rtdb, `users/${user.uid}/buddyGroups`) : null, [rtdb, user]);
   const { data: customGroupsData } = useRtdb(groupsRef);
 
-  const buddiesRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/buddies`) : null, [rtdb, user]);
+  const buddiesRef = useMemo(() => user && user.emailVerified ? ref(rtdb, `users/${user.uid}/buddies`) : null, [rtdb, user]);
   const { data: buddiesData } = useRtdb(buddiesRef);
 
-  const nodesRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/nodes`) : null, [rtdb, user]);
+  const nodesRef = useMemo(() => user && user.emailVerified ? ref(rtdb, `users/${user.uid}/nodes`) : null, [rtdb, user]);
   const { data: nodesData } = useRtdb(nodesRef);
 
-  const notificationsRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/notifications`) : null, [rtdb, user]);
+  const notificationsRef = useMemo(() => user && user.emailVerified ? ref(rtdb, `users/${user.uid}/notifications`) : null, [rtdb, user]);
   const { data: notificationsData } = useRtdb(notificationsRef);
 
-  const linksRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/links`) : null, [rtdb, user]);
+  const linksRef = useMemo(() => user && user.emailVerified ? ref(rtdb, `users/${user.uid}/links`) : null, [rtdb, user]);
   const { data: linksData } = useRtdb(linksRef);
 
   useEffect(() => {
-    if (!user || !rtdb) return;
+    if (!user || !user.emailVerified || !rtdb) return;
 
     const queryRef = ref(rtdb, `users/${user.uid}/notifications`);
     
@@ -434,7 +438,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (!user) return null;
+  if (!user || !user.emailVerified) return null;
 
   const navItems = userRole === 'guardian' 
     ? [
@@ -1339,7 +1343,7 @@ export default function DashboardPage() {
             <AlertDialogCancel className="rounded-2xl h-12 font-bold text-[10px] uppercase tracking-widest flex-1 border-primary/10">Abort</AlertDialogCancel>
             <AlertDialogAction onClick={() => {
               if (!user || !itemToDelete) return;
-              const path = itemToDelete.type === 'buddy' ? `users/${user.uid}/buddies/${itemToDelete.id}` : `users/${user.uid}/nodes/${itemToDelete.id}`;
+              const path = itemToDelete.type === 'buddy' ? `users/${user.uid}/buddies/${itemToDelete.id}` : `users/${user.uid}/buddies/${itemToDelete.id}`;
               const name = itemToDelete.nodeName || itemToDelete.name;
               remove(ref(rtdb, path)).then(() => {
                 logAction(`Purged asset from network: ${name} (${itemToDelete.type})`);

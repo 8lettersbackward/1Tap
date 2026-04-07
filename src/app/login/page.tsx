@@ -27,7 +27,11 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!userLoading && user) {
-      router.push("/dashboard");
+      if (user.emailVerified) {
+        router.push("/dashboard");
+      } else {
+        router.push("/verify-email");
+      }
     }
   }, [user, userLoading, router]);
 
@@ -38,10 +42,16 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const loggedUser = userCredential.user;
       
-      const profileRef = ref(rtdb, `users/${loggedUser.uid}/profile`);
-      const snapshot = await get(profileRef);
-      const profile = snapshot.val();
-      
+      if (!loggedUser.emailVerified) {
+        toast({
+          variant: "destructive",
+          title: "Identity Unverified",
+          description: "Please confirm your email signature before proceeding.",
+        });
+        router.push("/verify-email");
+        return;
+      }
+
       router.push("/dashboard");
     } catch (error: any) {
       toast({
@@ -62,7 +72,7 @@ export default function LoginPage() {
     );
   }
 
-  if (user) return null;
+  if (user && user.emailVerified) return null;
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-6 relative">

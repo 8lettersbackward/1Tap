@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 import { useAuth, useUser, useDatabase } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,7 +31,11 @@ export default function SignupPage() {
 
   useEffect(() => {
     if (!userLoading && user) {
-      router.push("/dashboard");
+      if (user.emailVerified) {
+        router.push("/dashboard");
+      } else {
+        router.push("/verify-email");
+      }
     }
   }, [user, userLoading, router]);
 
@@ -50,6 +54,9 @@ export default function SignupPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const newUser = userCredential.user;
       
+      // Send verification email
+      await sendEmailVerification(newUser);
+      
       await set(ref(rtdb, `users/${newUser.uid}/profile`), {
         email: newUser.email,
         role: role,
@@ -57,7 +64,12 @@ export default function SignupPage() {
         displayName: email.split('@')[0]
       });
 
-      router.push("/dashboard");
+      toast({
+        title: "Tactical Dispatch Sent",
+        description: "Verification signature dispatched to your email.",
+      });
+
+      router.push("/verify-email");
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -77,7 +89,7 @@ export default function SignupPage() {
     );
   }
 
-  if (user) return null;
+  if (user && user.emailVerified) return null;
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-6 relative">
