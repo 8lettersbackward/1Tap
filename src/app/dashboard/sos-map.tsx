@@ -46,7 +46,7 @@ export default function SOSMap({ latitude, longitude, label }: SOSMapProps) {
 
     try {
       mapInstance.current = L.map(mapRef.current, {
-        zoomControl: true,
+        zoomControl: false, // Moved to a custom position to avoid overlaps
         scrollWheelZoom: true,
         attributionControl: false
       }).setView([lat, lng], 15);
@@ -54,6 +54,8 @@ export default function SOSMap({ latitude, longitude, label }: SOSMapProps) {
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
       }).addTo(mapInstance.current);
+
+      L.control.zoom({ position: 'bottomright' }).addTo(mapInstance.current);
 
       const tacticalIcon = L.divIcon({
         className: 'tactical-marker',
@@ -72,7 +74,16 @@ export default function SOSMap({ latitude, longitude, label }: SOSMapProps) {
 
       L.marker([lat, lng], { icon: tacticalIcon })
         .addTo(mapInstance.current)
-        .bindPopup(`<div class="p-1"><b class="text-destructive uppercase font-bold text-[10px] block mb-1">${label || 'SOS SIGNAL'}</b><span class="text-[8px] uppercase font-bold tracking-widest opacity-60">Critical Alert Detected</span></div>`, {
+        .bindPopup(`
+          <div class="p-1 min-w-[120px]">
+            <b class="text-destructive uppercase font-bold text-[10px] block mb-1">${label || 'SOS SIGNAL'}</b>
+            <span class="text-[8px] uppercase font-bold tracking-widest opacity-60">Critical Alert Detected</span>
+            <div class="mt-2 text-[8px] font-mono opacity-80">
+              LAT: ${lat.toFixed(4)}<br/>
+              LNG: ${lng.toFixed(4)}
+            </div>
+          </div>
+        `, {
           closeButton: false,
           offset: [0, -10],
           className: 'tactical-popup'
@@ -142,9 +153,8 @@ export default function SOSMap({ latitude, longitude, label }: SOSMapProps) {
         .leaflet-control-zoom {
           border: none !important;
           box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
-          margin-left: 16px !important;
-          margin-top: 16px !important;
-          z-index: 1000 !important;
+          margin-bottom: 24px !important;
+          margin-right: 16px !important;
         }
         .leaflet-control-zoom-in, .leaflet-control-zoom-out {
           background-color: white !important;

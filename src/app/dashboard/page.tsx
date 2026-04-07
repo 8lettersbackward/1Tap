@@ -269,7 +269,6 @@ export default function DashboardPage() {
             try {
               const geo = await reverseGeocode({ latitude: Number(alert.latitude), longitude: Number(alert.longitude) });
               enhancedAlert.place = `${geo.city}, ${geo.province}, ${geo.country}`;
-              // Update the entry with the real place if it was missing
               update(ref(rtdb, `users/${user.uid}/notifications/${alertId}`), { place: enhancedAlert.place });
             } catch (e) {
               console.error("SOS Geocoding failed", e);
@@ -1083,11 +1082,11 @@ export default function DashboardPage() {
 
       <Dialog open={isTelemetryOpen} onOpenChange={setIsTelemetryOpen}>
         <DialogContent className="bg-white border-2 border-accent/20 shadow-2xl rounded-[2rem] w-[95vw] max-w-4xl p-0 overflow-hidden max-h-[90vh] flex flex-col">
-          <DialogHeader className="p-6 md:p-10 border-b border-accent/5 bg-accent/5">
+          <DialogHeader className="p-6 md:p-10 border-b border-accent/5 bg-accent/5 z-50">
              <div className="flex justify-between items-center">
                <div className="flex items-center gap-4">
                   <Radar className="h-6 w-6 md:h-8 md:w-8 text-accent animate-pulse flex-shrink-0" />
-                  <DialogTitle className="text-md md:text-xl font-bold uppercase tracking-widest text-[#12086F] truncate">Asset Control Hub</DialogTitle>
+                  <DialogTitle className="text-sm sm:text-lg md:text-xl font-bold uppercase tracking-widest text-[#12086F] truncate">Asset Control Hub</DialogTitle>
                </div>
              </div>
           </DialogHeader>
@@ -1137,7 +1136,7 @@ export default function DashboardPage() {
               )}
             </ScrollArea>
           </div>
-          <div className="p-6 md:p-10 bg-white border-t border-accent/5">
+          <div className="p-6 md:p-10 bg-white border-t border-accent/5 z-50">
             <Button 
               onClick={() => setIsTelemetryOpen(false)} 
               className="w-full h-14 rounded-2xl font-bold text-[10px] uppercase tracking-[0.3em] bg-accent hover:bg-accent shadow-xl shadow-accent/20 text-white"
@@ -1150,8 +1149,8 @@ export default function DashboardPage() {
 
       <Dialog open={isMapModalOpen} onOpenChange={setIsMapModalOpen}>
         <DialogContent className="bg-white border-none shadow-2xl rounded-[2rem] w-[95vw] max-w-3xl p-0 overflow-hidden max-h-[90vh] flex flex-col">
-          <DialogHeader className="p-6 md:p-8 border-b border-primary/5">
-            <DialogTitle className="text-md sm:text-lg md:text-xl font-bold uppercase tracking-widest text-secondary break-words min-w-0">Spatial Coordinate Intercept</DialogTitle>
+          <DialogHeader className="p-6 md:p-8 border-b border-primary/5 z-50 bg-white">
+            <DialogTitle className="text-sm sm:text-lg md:text-xl font-bold uppercase tracking-widest text-secondary break-words min-w-0">Spatial Coordinate Intercept</DialogTitle>
           </DialogHeader>
           <div className="flex-1 overflow-hidden relative">
              <ScrollArea className="h-full">
@@ -1172,7 +1171,7 @@ export default function DashboardPage() {
               )}
             </ScrollArea>
           </div>
-          <div className="p-6 md:p-8 border-t border-primary/5 bg-white">
+          <div className="p-6 md:p-8 border-t border-primary/5 bg-white z-50">
              <Button onClick={() => setIsMapModalOpen(false)} className="w-full h-14 rounded-2xl font-bold text-[10px] uppercase tracking-widest shadow-lg bg-primary hover:bg-primary text-white">
                Acknowledge Signal
              </Button>
@@ -1182,12 +1181,12 @@ export default function DashboardPage() {
 
       <Dialog open={isSosMapOpen} onOpenChange={setIsSosMapOpen}>
         <DialogContent className="bg-white border-2 border-destructive/20 shadow-2xl rounded-[2rem] w-[95vw] max-w-2xl p-0 overflow-hidden max-h-[90vh] flex flex-col">
-          <DialogHeader className="p-6 md:p-10 border-b border-destructive/5 bg-destructive/5">
+          <DialogHeader className="p-6 md:p-10 border-b border-destructive/5 bg-destructive/5 z-50">
              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                <div className="flex items-center gap-4 overflow-hidden flex-1 min-w-0">
                   <AlertTriangle className="h-6 w-6 md:h-8 md:w-8 text-destructive animate-bounce flex-shrink-0" />
                   <div className="overflow-hidden min-w-0">
-                    <DialogTitle className="text-lg sm:text-xl md:text-2xl font-bold text-destructive uppercase tracking-tighter break-words min-w-0">Tactical SOS Intercept</DialogTitle>
+                    <DialogTitle className="text-sm sm:text-xl md:text-2xl font-bold text-destructive uppercase tracking-tighter break-words min-w-0">Tactical SOS Intercept</DialogTitle>
                     <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 truncate">Master Signal: {activeSosAlert?.nodeName || 'Hardware Node'}</p>
                   </div>
                </div>
@@ -1226,7 +1225,7 @@ export default function DashboardPage() {
               </div>
             </ScrollArea>
           </div>
-          <div className="p-6 md:p-10 bg-white border-t border-destructive/5">
+          <div className="p-6 md:p-10 bg-white border-t border-destructive/5 z-50">
             <Button 
               onClick={() => setIsSosMapOpen(false)} 
               className="w-full h-14 rounded-2xl font-bold text-[10px] uppercase tracking-[0.3em] bg-destructive hover:bg-destructive shadow-xl shadow-destructive/20 text-white"
