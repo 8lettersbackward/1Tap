@@ -22,7 +22,6 @@ export default function ProfilePage() {
   const { toast } = useToast();
   
   const [displayName, setDisplayName] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState("");
   const [updating, setUpdating] = useState(false);
 
   const [newPassword, setNewPassword] = useState("");
@@ -38,7 +37,6 @@ export default function ProfilePage() {
     }
     if (user && !profileLoading && profileData) {
       setDisplayName(profileData.displayName || user.displayName || "");
-      setAvatarUrl(profileData.avatarUrl || user.photoURL || "");
     }
   }, [user, userLoading, profileData, profileLoading, router]);
 
@@ -152,7 +150,6 @@ export default function ProfilePage() {
         <aside className="space-y-4">
           <div className="p-8 border-2 border-dashed border-white/10 bg-white flex flex-col items-center text-center mb-6 rounded-xl shadow-xl">
             <Avatar className="h-28 w-28 rounded-none border-2 border-primary mb-4 shadow-[0_0_20px_rgba(72,149,239,0.3)]">
-              <AvatarImage src={avatarUrl} alt={currentDisplayName} />
               <AvatarFallback className="rounded-none bg-primary text-primary-foreground text-3xl font-bold">
                 {currentDisplayName[0].toUpperCase()}
               </AvatarFallback>

@@ -539,27 +539,33 @@ export default function DashboardPage() {
             </div>
           </div>
           <nav className="grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-col gap-2 md:gap-4">
-            {navItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id as TabType)}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-3 transition-all rounded-xl text-[9px] md:text-[10px] font-bold uppercase tracking-widest relative min-w-0",
-                  activeTab === item.id 
-                    ? "bg-primary text-white shadow-lg shadow-primary/20" 
-                    : "hover:bg-primary/5 text-muted-foreground"
-                )}
-              >
-                <item.icon className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
-                <span className="truncate">{item.label}</span>
-                {item.id === 'my-guardians' && (pendingRequests.length > 0 || links.some(l => l.trackingRequest === 'pending')) && (
-                  <span className="absolute top-1 right-1 h-2 w-2 bg-destructive rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
-                )}
-                {item.id === 'notifications' && notifications.length > 0 && (
-                  <span className="absolute top-1 right-1 h-2 w-2 bg-secondary rounded-full animate-pulse shadow-[0_0_8px_rgba(72,149,239,0.6)]" />
-                )}
-              </button>
-            ))}
+            {navItems.map((item) => {
+              const isActive = activeTab === item.id;
+              const isNotification = item.id === 'notifications';
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id as TabType)}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-3 transition-all rounded-xl text-[9px] md:text-[10px] font-bold uppercase tracking-widest relative min-w-0",
+                    isActive 
+                      ? (isNotification 
+                          ? "text-primary font-black border border-primary/10 bg-white/50" 
+                          : "bg-primary text-white shadow-lg shadow-primary/20") 
+                      : "hover:bg-primary/5 text-muted-foreground"
+                  )}
+                >
+                  <item.icon className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
+                  <span className="truncate">{item.label}</span>
+                  {item.id === 'my-guardians' && (pendingRequests.length > 0 || links.some(l => l.trackingRequest === 'pending')) && (
+                    <span className="absolute top-1 right-1 h-2 w-2 bg-destructive rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
+                  )}
+                  {isNotification && notifications.length > 0 && !isActive && (
+                    <span className="absolute top-1 right-1 h-2 w-2 bg-secondary rounded-full animate-pulse shadow-[0_0_8px_rgba(72,149,239,0.6)]" />
+                  )}
+                </button>
+              );
+            })}
           </nav>
         </div>
       </aside>
@@ -1133,7 +1139,7 @@ export default function DashboardPage() {
                   />
                   <div className="p-4 md:p-6 bg-white/80 backdrop-blur-md border-t border-destructive/10 flex items-center gap-3">
                       <MapPin className="h-4 w-4 md:h-5 md:w-5 text-destructive flex-shrink-0" />
-                      <p className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest flex-1 break-words">{activeSosAlert?.place || 'Coordinates Identified'}</p>
+                      <p className="text-9px md:text-[10px] font-bold uppercase tracking-widest flex-1 break-words">{activeSosAlert?.place || 'Coordinates Identified'}</p>
                   </div>
                 </div>
               </div>
