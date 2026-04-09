@@ -551,7 +551,6 @@ export default function DashboardPage() {
           <nav className="grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-col gap-2 md:gap-4">
             {navItems.map((item) => {
               const isActive = activeTab === item.id;
-              const isNotification = item.id === 'notifications';
               return (
                 <button
                   key={item.id}
@@ -559,9 +558,7 @@ export default function DashboardPage() {
                   className={cn(
                     "flex items-center gap-3 px-3 py-3 transition-all rounded-xl text-[9px] md:text-[10px] font-bold uppercase tracking-widest relative min-w-0",
                     isActive 
-                      ? (isNotification 
-                          ? "text-primary font-black border border-primary/10 bg-white/50" 
-                          : "bg-primary text-white shadow-lg shadow-primary/20") 
+                      ? "bg-primary text-white shadow-lg shadow-primary/20" 
                       : "hover:bg-primary/5 text-muted-foreground"
                   )}
                 >
@@ -570,7 +567,7 @@ export default function DashboardPage() {
                   {item.id === 'my-guardians' && (pendingRequests.length > 0 || links.some(l => l.trackingRequest === 'pending')) && (
                     <span className="absolute top-1 right-1 h-2 w-2 bg-destructive rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
                   )}
-                  {isNotification && notifications.length > 0 && !isActive && (
+                  {item.id === 'notifications' && notifications.length > 0 && (
                     <span className="absolute top-1 right-1 h-2 w-2 bg-secondary rounded-full animate-pulse shadow-[0_0_8px_rgba(72,149,239,0.6)]" />
                   )}
                 </button>
