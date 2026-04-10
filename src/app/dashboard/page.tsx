@@ -1073,7 +1073,7 @@ export default function DashboardPage() {
               onClick={() => setIsTelemetryOpen(false)} 
               className="w-full h-14 rounded-2xl font-bold text-[10px] uppercase tracking-[0.3em] bg-accent hover:bg-accent shadow-xl shadow-accent/20 text-white"
             >
-              CLOSE ASSET
+              CLOSE
             </Button>
           </div>
         </DialogContent>
@@ -1105,7 +1105,7 @@ export default function DashboardPage() {
           </div>
           <div className="p-6 md:p-8 border-t border-primary/5 bg-white z-50">
              <Button onClick={() => setIsMapModalOpen(false)} className="w-full h-14 rounded-2xl font-bold text-[10px] uppercase tracking-widest shadow-lg bg-primary hover:bg-primary text-white">
-               Acknowledge Signal
+               CLOSE
              </Button>
           </div>
         </DialogContent>
@@ -1162,7 +1162,7 @@ export default function DashboardPage() {
               onClick={() => setIsSosMapOpen(false)} 
               className="w-full h-14 rounded-2xl font-bold text-[10px] uppercase tracking-[0.3em] bg-destructive hover:bg-destructive shadow-xl shadow-destructive/20 text-white"
             >
-              Acknowledge & Close Tactical Map
+              CLOSE
             </Button>
           </div>
         </DialogContent>
