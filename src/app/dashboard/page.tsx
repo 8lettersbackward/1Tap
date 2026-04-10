@@ -120,7 +120,6 @@ export default function DashboardPage() {
   const [activeSosAlert, setActiveSosAlert] = useState<any>(null);
   const [isSosMapOpen, setIsSosMapOpen] = useState(false);
   const lastProcessedAlertRef = useRef<string | null>(null);
-  const [expandedMapId, setExpandedMapId] = useState<string | null>(null);
 
   const currentName = useMemo(() => {
     if (!user?.email) return "User";
@@ -267,7 +266,7 @@ export default function DashboardPage() {
     });
 
     return () => off(queryRef, "child_added", unsubscribe);
-  }, [user, rtdb, userRole]);
+  }, [user, rtdb]);
 
   const buddyGroups = useMemo(() => {
     const customNames = customGroupsData ? Object.values(customGroupsData).map((g: any) => g.name) : [];
@@ -912,19 +911,45 @@ export default function DashboardPage() {
                           </Badge>
                         </div>
                         
-                        {n.type === 'sos' && (
-                          <div className="space-y-4 mb-4 ml-0 sm:ml-9">
-                            <p className="text-xs font-medium text-destructive/80">Trigger: {n.trigger || 'Manual SOS'}</p>
+                        {(n.type === 'sos' || isValidCoordinate(n.latitude)) && (
+                          <div className="ml-0 sm:ml-9 mb-4 space-y-4">
                             <div className="space-y-2">
-                              <p className="text-xs font-medium opacity-60 flex items-center gap-2 break-words"><MapPin className="h-3 w-3 flex-shrink-0" /> {n.place || 'Location Coordinates Acquired'}</p>
-                              {isValidCoordinate(n.latitude) && isValidCoordinate(n.longitude) && (
-                                <p className="text-[10px] font-mono font-bold opacity-60 flex items-center gap-2">
-                                  <Navigation className="h-3 w-3 flex-shrink-0" /> LAT: {n.latitude} | LNG: {n.longitude}
+                              {n.type === 'sos' && <p className="text-xs font-medium text-destructive/80">Trigger: {n.trigger || 'Manual SOS'}</p>}
+                              {n.place && <p className="text-xs font-medium opacity-70 flex items-center gap-2 break-words"><MapPin className="h-3 w-3 flex-shrink-0" /> {n.place}</p>}
+                              <p className="text-[10px] font-mono font-bold opacity-60 flex items-center gap-2">
+                                <Navigation className="h-3 w-3 flex-shrink-0" /> LAT: {n.latitude} | LNG: {n.longitude}
+                              </p>
+                              {n.senderEmail && (
+                                <p className="text-[10px] font-bold text-accent uppercase tracking-widest flex items-center gap-2">
+                                  <ShieldAlert className="h-3 w-3" /> Linked Guardian: {n.senderEmail}
                                 </p>
                               )}
                             </div>
-                            <div className="flex flex-wrap gap-3">
-                               <Button size="sm" onClick={() => { setActiveSosAlert(n); setIsSosMapOpen(true); }} className="h-8 rounded-lg bg-destructive text-[9px] font-bold uppercase tracking-widest px-6 shadow-lg shadow-destructive/20 text-white flex-1 sm:flex-none">Tactical Map</Button>
+                            
+                            <div className="flex flex-wrap gap-2">
+                              <Button 
+                                variant={n.type === 'sos' ? 'default' : 'outline'}
+                                size="sm" 
+                                className={cn(
+                                  "h-8 rounded-xl text-[9px] font-bold uppercase tracking-widest px-6",
+                                  n.type === 'sos' ? "bg-destructive hover:bg-destructive shadow-lg shadow-destructive/20 text-white" : "border-primary/20 hover:bg-primary/5"
+                                )}
+                                onClick={() => { 
+                                  setActiveSosAlert(n); 
+                                  setIsSosMapOpen(true); 
+                                }}
+                              >
+                                <MapPin className="h-3.5 w-3.5 mr-2" /> Tactical Map
+                              </Button>
+                              
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-8 rounded-xl text-[9px] font-bold uppercase tracking-widest px-6 text-accent hover:bg-accent/5"
+                                onClick={() => window.open(`https://www.google.com/maps?q=${n.latitude},${n.longitude}`, '_blank')}
+                              >
+                                <Navigation className="h-3.5 w-3.5 mr-2" /> Google Maps
+                              </Button>
                             </div>
                           </div>
                         )}
@@ -941,54 +966,6 @@ export default function DashboardPage() {
                           </div>
                         )}
 
-                        {isValidCoordinate(n.latitude) && n.type !== 'sos' && (
-                          <div className="ml-0 sm:ml-9 mb-4 space-y-4">
-                            <div className="space-y-2">
-                              {n.place && <p className="text-xs font-medium text-secondary/80 flex items-center gap-2 break-words"><MapPin className="h-3 w-3 flex-shrink-0" /> {n.place}</p>}
-                              <p className="text-[10px] font-mono font-bold opacity-60 flex items-center gap-2">
-                                <Navigation className="h-3 w-3 flex-shrink-0" /> LAT: {n.latitude} | LNG: {n.longitude}
-                              </p>
-                              {n.senderEmail && (
-                                <p className="text-[10px] font-bold text-accent uppercase tracking-widest flex items-center gap-2">
-                                  <ShieldAlert className="h-3 w-3" /> Linked Guardian: {n.senderEmail}
-                                </p>
-                              )}
-                            </div>
-                            
-                            <div className="flex flex-wrap gap-2">
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className={cn(
-                                  "h-8 rounded-xl text-[9px] font-bold uppercase tracking-widest px-6 border-primary/20",
-                                  expandedMapId === n.id ? "bg-primary text-white" : "hover:bg-primary/5"
-                                )}
-                                onClick={() => setExpandedMapId(expandedMapId === n.id ? null : n.id)}
-                              >
-                                <MapPin className="h-3.5 w-3.5 mr-2" /> {expandedMapId === n.id ? 'Close Map' : 'Tactical Map'}
-                              </Button>
-                              
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-8 rounded-xl text-[9px] font-bold uppercase tracking-widest px-6 text-accent hover:bg-accent/5"
-                                onClick={() => window.open(`https://www.google.com/maps?q=${n.latitude},${n.longitude}`, '_blank')}
-                              >
-                                <Navigation className="h-3.5 w-3.5 mr-2" /> Google Maps
-                              </Button>
-                            </div>
-
-                            {expandedMapId === n.id && (
-                              <div className="rounded-2xl overflow-hidden border border-primary/10 shadow-inner animate-in fade-in slide-in-from-top-2 duration-300">
-                                <SOSMap 
-                                  latitude={n.latitude} 
-                                  longitude={n.longitude} 
-                                  label={n.place || n.message || "SIGNAL INTERCEPT"} 
-                                />
-                              </div>
-                            )}
-                          </div>
-                        )}
                         <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold ml-0 sm:ml-9">{safeFormatDate(n.createdAt)}</p>
                       </div>
                     ))
