@@ -54,7 +54,9 @@ import {
   UserPlus,
   ArrowRight,
   ShieldQuestion,
-  LocateFixed
+  LocateFixed,
+  Zap,
+  ZapOff
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ref, push, remove, update, onChildAdded, off, get } from "firebase/database";
@@ -156,10 +158,12 @@ export default function DashboardPage() {
   }, [allUsersData, user]);
 
   const radarSearchResults = useMemo(() => {
-    if (!radarSearchTerm || radarSearchTerm.trim().length < 3) return [];
-    return availableNodes.filter(node => 
-      node.hardwareId && node.hardwareId.toLowerCase() === radarSearchTerm.toLowerCase().trim()
-    );
+    if (!radarSearchTerm || !radarSearchTerm.trim() || radarSearchTerm.trim().length < 3) return [];
+    const term = radarSearchTerm.toLowerCase().trim();
+    return availableNodes.filter(node => {
+      const hId = node.hardwareId ? String(node.hardwareId).toLowerCase() : "";
+      return hId === term;
+    });
   }, [availableNodes, radarSearchTerm]);
 
   const currentName = useMemo(() => user?.email?.split('@')[0] || "Personnel", [user]);
@@ -213,13 +217,15 @@ export default function DashboardPage() {
         [`users/${user.uid}/links/${targetUid}`]: {
           status: 'requested',
           hardwareId,
-          targetEmail: availableNodes.find(n => n.ownerUid === targetUid && n.hardwareId === hardwareId)?.ownerEmail || "Unknown"
+          targetEmail: availableNodes.find(n => n.ownerUid === targetUid && n.hardwareId === hardwareId)?.ownerEmail || "Unknown",
+          trackingRequest: null
         },
         [`users/${targetUid}/links/${user.uid}`]: {
           status: 'pending',
           hardwareId,
           guardianEmail: user.email,
-          createdAt: Date.now()
+          createdAt: Date.now(),
+          trackingRequest: null
         }
       };
       await update(ref(rtdb), updates);
@@ -243,6 +249,34 @@ export default function DashboardPage() {
     }
   };
 
+  const handleRequestTracking = async (targetUid: string) => {
+    if (!user || !rtdb) return;
+    try {
+      const updates = {
+        [`users/${user.uid}/links/${targetUid}/trackingRequest`]: 'requested',
+        [`users/${targetUid}/links/${user.uid}/trackingRequest`]: 'requested',
+      };
+      await update(ref(rtdb), updates);
+      toast({ title: "Tracking Requested", description: "Telemetry authorization signal dispatched." });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Protocol Error", description: err.message });
+    }
+  };
+
+  const handleApproveTracking = async (guardianId: string) => {
+    if (!user || !rtdb) return;
+    try {
+      const updates = {
+        [`users/${user.uid}/links/${guardianId}/trackingRequest`]: 'approved',
+        [`users/${guardianId}/links/${user.uid}/trackingRequest`]: 'approved',
+      };
+      await update(ref(rtdb), updates);
+      toast({ title: "Telemetry Authorized", description: "Real-time tracking enabled for this Guardian." });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Authorization Error", description: err.message });
+    }
+  };
+
   const handleRejectLink = async (guardianId: string) => {
     if (!user || !rtdb) return;
     try {
@@ -251,7 +285,7 @@ export default function DashboardPage() {
         [`users/${guardianId}/links/${user.uid}`]: null,
       };
       await update(ref(rtdb), updates);
-      toast({ title: "Protocol Purged", description: "Link request rejected." });
+      toast({ title: "Protocol Purged", description: "Link request rejected or terminated." });
     } catch (err: any) {
       toast({ variant: "destructive", title: "Purge Error", description: err.message });
     }
@@ -300,20 +334,10 @@ export default function DashboardPage() {
       groups: selectedGroups
     };
 
-    if (editingBuddy) {
-      setIsBuddyDialogOpen(false);
-      setTimeout(() => {
-        setPendingUpdate({ type: 'buddy', data: buddyData });
-      }, 300);
-    } else {
-      try {
-        await push(ref(rtdb, `users/${user.uid}/buddies`), buddyData);
-        toast({ title: "Personnel Enlisted", description: "New buddy added to vault." });
-        setIsBuddyDialogOpen(false);
-      } catch (err: any) {
-        toast({ variant: "destructive", title: "Vault Error", description: err.message });
-      }
-    }
+    setIsBuddyDialogOpen(false);
+    setTimeout(() => {
+      setPendingUpdate({ type: 'buddy', data: buddyData });
+    }, 400);
   };
 
   const handleSaveNode = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -321,27 +345,17 @@ export default function DashboardPage() {
     if (!user || !rtdb) return;
     const formData = new FormData(e.currentTarget);
     const nodeData = {
-      nodeName: formData.get('nodeName') as string,
+      nodeName: formData.get('tacticalNodeName') as string,
       hardwareId: formData.get('hardwareId') as string,
       status: editingNode?.status || 'offline',
       temperature: editingNode?.temperature || 24.5,
       targetGroups: selectedGroups
     };
 
-    if (editingNode) {
-      setIsNodeDialogOpen(false);
-      setTimeout(() => {
-        setPendingUpdate({ type: 'node', data: nodeData });
-      }, 300);
-    } else {
-      try {
-        await push(ref(rtdb, `users/${user.uid}/nodes`), nodeData);
-        toast({ title: "Node Armed", description: "Hardware asset registered." });
-        setIsNodeDialogOpen(false);
-      } catch (err: any) {
-        toast({ variant: "destructive", title: "Hardware Error", description: err.message });
-      }
-    }
+    setIsNodeDialogOpen(false);
+    setTimeout(() => {
+      setPendingUpdate({ type: 'node', data: nodeData });
+    }, 400);
   };
 
   const executeUpdate = async () => {
@@ -353,14 +367,22 @@ export default function DashboardPage() {
     setPendingUpdate(null);
 
     try {
-      if (type === 'buddy' && currentEditingBuddy) {
-        await update(ref(rtdb, `users/${user.uid}/buddies/${currentEditingBuddy.id}`), data);
-        setEditingBuddy(null);
-      } else if (type === 'node' && currentEditingNode) {
-        await update(ref(rtdb, `users/${user.uid}/nodes/${currentEditingNode.id}`), data);
-        setEditingNode(null);
+      if (type === 'buddy') {
+        if (currentEditingBuddy) {
+          await update(ref(rtdb, `users/${user.uid}/buddies/${currentEditingBuddy.id}`), data);
+          setEditingBuddy(null);
+        } else {
+          await push(ref(rtdb, `users/${user.uid}/buddies`), data);
+        }
+      } else if (type === 'node') {
+        if (currentEditingNode) {
+          await update(ref(rtdb, `users/${user.uid}/nodes/${currentEditingNode.id}`), data);
+          setEditingNode(null);
+        } else {
+          await push(ref(rtdb, `users/${user.uid}/nodes`), data);
+        }
       }
-      toast({ title: "Sync Complete", description: "Data committed to master vault." });
+      toast({ title: "Sync Complete", description: "Master vault updated." });
     } catch (err: any) {
       toast({ variant: "destructive", title: "Sync Error", description: err.message });
     }
@@ -421,7 +443,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-background text-foreground overflow-x-hidden">
-      {/* Navigation Structure */}
+      {/* Mobile Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden flex justify-around items-center p-4 bg-background/80 backdrop-blur-md border-t border-black/5 pb-8 shadow-[0_-10px_20px_rgba(0,0,0,0.05)]">
         {navItems.map((item) => (
           <button
@@ -437,7 +459,7 @@ export default function DashboardPage() {
             {notifications.length > 0 && item.id === 'notifications' && (
               <span className="absolute top-0 right-1 h-1.5 w-1.5 bg-primary rounded-full" />
             )}
-            {(links.some(l => l.status === 'pending')) && (item.id === 'linked' || item.id === 'guardian') && (
+            {(links.some(l => l.status === 'pending' || l.trackingRequest === 'requested')) && (item.id === 'linked' || item.id === 'guardian') && (
               <span className="absolute top-0 right-1 h-1.5 w-1.5 bg-destructive rounded-full animate-pulse" />
             )}
           </button>
@@ -469,7 +491,7 @@ export default function DashboardPage() {
                 {notifications.length > 0 && item.id === 'notifications' && (
                   <span className="absolute top-1/2 -translate-y-1/2 right-6 h-1.5 w-1.5 bg-primary rounded-full" />
                 )}
-                {(links.some(l => l.status === 'pending')) && (item.id === 'linked' || item.id === 'guardian') && (
+                {(links.some(l => l.status === 'pending' || l.trackingRequest === 'requested')) && (item.id === 'linked' || item.id === 'guardian') && (
                   <span className="absolute top-1/2 -translate-y-1/2 right-6 h-1.5 w-1.5 bg-destructive rounded-full animate-pulse" />
                 )}
               </button>
@@ -528,15 +550,14 @@ export default function DashboardPage() {
                             <p className="text-[8px] font-black text-muted-foreground mt-1 uppercase tracking-widest">{buddy.phoneNumber}</p>
                           </div>
                         </div>
-                        <Badge className="neo-btn bg-background text-foreground text-[7px] font-black px-2 py-0.5 uppercase border border-black/5">ID-{buddy.id.slice(-4)}</Badge>
                       </div>
                       
                       {buddy.groups && buddy.groups.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 pt-2">
                           {buddy.groups.map(gid => {
-                            const groupName = groups.find(g => g.id === gid)?.name || "Unknown Protocol";
+                            const groupName = groups.find(g => g.id === gid)?.name || "Protocol Signal";
                             return (
-                              <Badge key={gid} className="bg-primary/5 text-primary text-[7px] font-black border-none px-2 py-0.5 rounded-sm uppercase tracking-tighter">
+                              <Badge key={gid} className="bg-primary/5 text-primary text-[7px] font-black border-none px-2 py-0.5 rounded-sm uppercase">
                                 {groupName}
                               </Badge>
                             );
@@ -550,9 +571,6 @@ export default function DashboardPage() {
                         </Button>
                         <Button size="icon" variant="ghost" className="h-8 w-8 neo-btn text-muted-foreground hover:text-destructive" onClick={() => setDeleteConfirm({ id: buddy.id, type: 'buddy', name: buddy.name })}>
                           <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button size="icon" variant="ghost" className="h-8 w-8 neo-btn text-primary hover:text-foreground ml-auto shadow-inner bg-primary/5">
-                          <Phone className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </div>
@@ -581,7 +599,7 @@ export default function DashboardPage() {
                     <div key={node.id} className="neo-flat p-6 space-y-6 hover:shadow-lg transition-shadow duration-300 group">
                       <div className="flex justify-between items-start">
                         <div className="flex gap-4 items-center">
-                          <div className={cn("h-10 w-10 neo-inset flex items-center justify-center border border-black/5", node.status === 'online' ? "text-green-500 shadow-[inset_0_0_10px_rgba(34,197,94,0.1)]" : "text-muted-foreground")}>
+                          <div className={cn("h-10 w-10 neo-inset flex items-center justify-center border border-black/5", node.status === 'online' ? "text-green-500" : "text-muted-foreground")}>
                             <Cpu className="h-5 w-5" />
                           </div>
                           <div>
@@ -598,9 +616,9 @@ export default function DashboardPage() {
                       {node.targetGroups && node.targetGroups.length > 0 && (
                         <div className="flex flex-wrap gap-1.5">
                           {node.targetGroups.map(gid => {
-                            const groupName = groups.find(g => g.id === gid)?.name || "Unknown Protocol";
+                            const groupName = groups.find(g => g.id === gid)?.name || "Protocol Signal";
                             return (
-                              <Badge key={gid} className="bg-secondary text-foreground text-[7px] font-black border border-black/5 px-2 py-0.5 rounded-sm uppercase tracking-tighter">
+                              <Badge key={gid} className="bg-secondary text-foreground text-[7px] font-black border border-black/5 px-2 py-0.5 rounded-sm uppercase">
                                 {groupName}
                               </Badge>
                             );
@@ -609,7 +627,7 @@ export default function DashboardPage() {
                       )}
 
                       <div className="neo-inset p-3 space-y-1 text-center border border-black/5">
-                        <p className="text-[8px] font-black text-foreground/40 uppercase mb-1">Telemetry</p>
+                        <p className="text-[8px] font-black text-foreground/40 uppercase mb-1 tracking-tighter">Current Telemetry</p>
                         <div className="flex items-center justify-center gap-2">
                           <Thermometer className="h-3 w-3 text-orange-500/60" />
                           <p className="text-[10px] font-black text-foreground">{node.temperature || '--'}°C</p>
@@ -621,9 +639,6 @@ export default function DashboardPage() {
                         </Button>
                         <Button size="icon" variant="ghost" className="h-8 w-8 neo-btn text-muted-foreground hover:text-destructive" onClick={() => setDeleteConfirm({ id: node.id, type: 'node', name: node.nodeName })}>
                           <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button size="icon" variant="ghost" className="h-8 w-8 neo-btn text-green-500 hover:text-foreground ml-auto bg-green-500/5 shadow-inner">
-                          <Activity className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </div>
@@ -645,31 +660,48 @@ export default function DashboardPage() {
                 ) : (
                   <>
                     {userRole !== 'guardian' && links.map(link => (
-                      <div key={link.id} className={cn("neo-flat p-6 space-y-4", link.status === 'pending' ? "bg-primary/5" : "bg-white")}>
+                      <div key={link.id} className={cn("neo-flat p-6 space-y-4", link.status === 'pending' || link.trackingRequest === 'requested' ? "bg-primary/5" : "bg-white")}>
                         <div className="flex justify-between items-start">
                           <div className="flex gap-4 items-center">
                             <Avatar className="h-10 w-10 neo-inset border border-black/5">
                               <AvatarFallback className="bg-transparent text-[10px] font-black text-foreground">{link.guardianEmail?.[0].toUpperCase() || 'G'}</AvatarFallback>
                             </Avatar>
-                            <div>
-                              <p className="text-[10px] font-black uppercase tracking-widest text-foreground">Handshake Signal</p>
-                              <p className="text-[8px] font-black text-muted-foreground mt-1 uppercase tracking-widest truncate max-w-[120px]">{link.guardianEmail}</p>
+                            <div className="overflow-hidden">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-foreground truncate">{link.guardianEmail}</p>
+                              <Badge className={cn("text-[7px] font-black px-2 py-0.5 rounded-sm uppercase mt-1", link.status === 'linked' ? "bg-green-500/10 text-green-600" : "bg-primary/10 text-primary")}>
+                                {link.status}
+                              </Badge>
                             </div>
                           </div>
-                          <Badge className={cn("text-[7px] font-black px-2 py-0.5 rounded-sm uppercase", link.status === 'linked' ? "bg-green-500/10 text-green-600" : "bg-primary/10 text-primary animate-pulse")}>
-                            {link.status}
-                          </Badge>
                         </div>
+
                         {link.status === 'pending' && (
                           <div className="flex gap-3 pt-2">
-                            <Button onClick={() => handleAcceptLink(link.id)} className="flex-1 h-10 neo-btn bg-primary text-white text-[9px] font-black uppercase shadow-lg shadow-primary/20"><ShieldCheck className="h-3.5 w-3.5 mr-2" /> ACCEPT</Button>
-                            <Button onClick={() => handleRejectLink(link.id)} className="flex-1 h-10 neo-btn bg-background text-destructive text-[9px] font-black uppercase"><ShieldX className="h-3.5 w-3.5 mr-2" /> REJECT</Button>
+                            <Button onClick={() => handleAcceptLink(link.id)} className="flex-1 h-10 neo-btn bg-primary text-white text-[9px] font-black uppercase tracking-widest"><ShieldCheck className="h-3.5 w-3.5 mr-2" /> ACCEPT</Button>
+                            <Button onClick={() => handleRejectLink(link.id)} className="flex-1 h-10 neo-btn bg-background text-destructive text-[9px] font-black uppercase tracking-widest"><ShieldX className="h-3.5 w-3.5 mr-2" /> REJECT</Button>
                           </div>
                         )}
+
+                        {link.status === 'linked' && link.trackingRequest === 'requested' && (
+                          <div className="p-4 neo-inset bg-destructive/5 space-y-3 border border-destructive/20">
+                            <p className="text-[8px] font-black text-destructive uppercase tracking-widest flex items-center gap-2"><Zap className="h-3 w-3" /> Incoming Track Request</p>
+                            <div className="flex gap-2">
+                              <Button onClick={() => handleApproveTracking(link.id)} className="flex-1 h-8 neo-btn bg-primary text-white text-[8px] font-black uppercase">APPROVE</Button>
+                              <Button onClick={() => handleRejectLink(link.id)} className="flex-1 h-8 neo-btn bg-background text-destructive text-[8px] font-black uppercase">REJECT</Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {link.status === 'linked' && link.trackingRequest === 'approved' && (
+                          <div className="p-3 neo-inset bg-green-500/5 border border-green-500/10">
+                            <p className="text-[8px] font-black text-green-600 uppercase tracking-widest flex items-center justify-center gap-2">
+                              <ShieldCheck className="h-3 w-3" /> Telemetry Authorized
+                            </p>
+                          </div>
+                        )}
+
                         {link.status === 'linked' && (
-                           <Button onClick={() => handleRejectLink(link.id)} variant="ghost" className="w-full h-10 neo-btn bg-background text-destructive text-[9px] font-black uppercase tracking-widest">
-                            <ShieldX className="h-3.5 w-3.5 mr-2" /> TERMINATE
-                          </Button>
+                          <Button onClick={() => handleRejectLink(link.id)} variant="ghost" className="w-full h-8 text-[8px] font-black uppercase text-muted-foreground hover:text-destructive"><Trash2 className="h-3 w-3 mr-2" /> TERMINATE LINK</Button>
                         )}
                       </div>
                     ))}
@@ -683,27 +715,38 @@ export default function DashboardPage() {
                               <Avatar className="h-10 w-10 neo-inset border border-black/5">
                                 <AvatarFallback className="bg-transparent text-[10px] font-black text-foreground">{link.targetEmail?.[0].toUpperCase() || 'U'}</AvatarFallback>
                               </Avatar>
-                              <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-foreground">Tactical Link</p>
-                                <p className="text-[8px] font-black text-muted-foreground mt-1 uppercase tracking-widest truncate max-w-[120px]">{link.targetEmail}</p>
+                              <div className="overflow-hidden">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-foreground truncate">{link.targetEmail}</p>
+                                <p className="text-[8px] font-black text-muted-foreground uppercase mt-1 truncate">ID: {link.hardwareId}</p>
                               </div>
                             </div>
                             <Badge className={cn("text-[7px] font-black px-2 py-0.5 rounded-sm uppercase", link.status === 'linked' ? "bg-green-500/10 text-green-600" : "bg-primary/10 text-primary")}>
                               {link.status}
                             </Badge>
                           </div>
+
                           {link.status === 'linked' && (
                             <div className="space-y-3 pt-2">
-                              <Button 
-                                onClick={() => handleToggleTrack(link.id, link.hardwareId, linkedNode?.trackRequest || false)} 
-                                className={cn(
-                                  "w-full h-10 neo-btn text-[9px] font-black uppercase tracking-widest transition-all",
-                                  linkedNode?.trackRequest ? "bg-primary text-white" : "bg-background text-foreground"
-                                )}
-                              >
-                                {linkedNode?.trackRequest ? <ShieldCheck className="h-3.5 w-3.5 mr-2" /> : <Radar className="h-3.5 w-3.5 mr-2" />}
-                                {linkedNode?.trackRequest ? "TRACKING ACTIVE" : "START TRACKING"}
-                              </Button>
+                              {link.trackingRequest === 'approved' ? (
+                                <Button 
+                                  onClick={() => handleToggleTrack(link.id, link.hardwareId, linkedNode?.trackRequest || false)} 
+                                  className={cn(
+                                    "w-full h-12 neo-btn text-[9px] font-black uppercase tracking-[0.2em] transition-all",
+                                    linkedNode?.trackRequest ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-background text-foreground"
+                                  )}
+                                >
+                                  {linkedNode?.trackRequest ? <Zap className="h-3.5 w-3.5 mr-2 animate-pulse" /> : <ZapOff className="h-3.5 w-3.5 mr-2" />}
+                                  {linkedNode?.trackRequest ? "TRACKING ACTIVE" : "START TRACKING"}
+                                </Button>
+                              ) : link.trackingRequest === 'requested' ? (
+                                <Button disabled className="w-full h-12 neo-btn bg-background text-primary/40 text-[9px] font-black uppercase">
+                                  <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> PENDING AUTHORIZATION
+                                </Button>
+                              ) : (
+                                <Button onClick={() => handleRequestTracking(link.id)} className="w-full h-12 neo-btn bg-background text-foreground hover:text-primary text-[9px] font-black uppercase">
+                                  <Radar className="h-3.5 w-3.5 mr-2" /> REQUEST TELEMETRY
+                                </Button>
+                              )}
                             </div>
                           )}
                           <Button onClick={() => handleRejectLink(link.id)} variant="ghost" className="w-full h-8 text-[8px] font-black uppercase text-muted-foreground hover:text-destructive"><Trash2 className="h-3 w-3 mr-2" /> DISCONNECT</Button>
@@ -795,12 +838,11 @@ export default function DashboardPage() {
                         <div className="flex justify-between items-start">
                           <div className="flex gap-4 items-center">
                             <div className="h-10 w-10 neo-inset flex items-center justify-center text-primary/40"><Cpu className="h-5 w-5" /></div>
-                            <div>
-                              <p className="text-[10px] font-black uppercase tracking-widest text-foreground">{node.nodeName}</p>
-                              <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest truncate max-w-[120px]">{node.ownerEmail}</p>
+                            <div className="overflow-hidden">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-foreground truncate">{node.nodeName}</p>
+                              <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest truncate">{node.ownerEmail}</p>
                             </div>
                           </div>
-                          <Badge className="bg-background text-foreground text-[7px] font-black px-2 py-0.5 border border-black/5 uppercase">HW-{node.hardwareId.slice(-4)}</Badge>
                         </div>
                         {existingLink ? (
                           <div className="w-full py-3 neo-inset text-center bg-white/50 border border-black/5">
@@ -950,7 +992,7 @@ export default function DashboardPage() {
           <form onSubmit={handleSaveNode} className="space-y-6 mt-4 flex-1 overflow-y-auto pr-2">
             <div className="space-y-2">
               <Label className="text-[9px] font-black text-foreground uppercase tracking-widest ml-1">Asset Name</Label>
-              <Input name="nodeName" defaultValue={editingNode?.nodeName} required className="h-12 neo-inset bg-background text-foreground border-none px-5 font-black uppercase text-[10px]" />
+              <Input name="tacticalNodeName" defaultValue={editingNode?.nodeName} required className="h-12 neo-inset bg-background text-foreground border-none px-5 font-black uppercase text-[10px]" />
             </div>
             <div className="space-y-2">
               <Label className="text-[9px] font-black text-foreground uppercase tracking-widest ml-1">Hardware ID</Label>
