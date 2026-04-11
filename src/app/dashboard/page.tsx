@@ -91,6 +91,8 @@ interface Node {
   ownerUid?: string;
   ownerEmail?: string;
   trackRequest?: boolean;
+  latitude?: number;
+  longitude?: number;
 }
 
 export default function DashboardPage() {
@@ -110,6 +112,8 @@ export default function DashboardPage() {
   const [isProtocolDialogOpen, setIsProtocolDialogOpen] = useState(false);
   const [editingBuddy, setEditingBuddy] = useState<Buddy | null>(null);
   const [editingNode, setEditingNode] = useState<Node | null>(null);
+  const [viewingBuddy, setViewingBuddy] = useState<Buddy | null>(null);
+  const [viewingNode, setViewingNode] = useState<Node | null>(null);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string, type: 'buddy' | 'node' | 'group' | 'link', name: string } | null>(null);
@@ -347,8 +351,6 @@ export default function DashboardPage() {
     const nodeName = formData.get('tacticalNodeName') as string;
     const hardwareId = formData.get('hardwareId') as string;
 
-    // IDENTITY UNIQUENESS VALIDATION
-    // Check Hardware ID globally across all discovered assets
     const isHardwareIdDuplicate = nodes.some(n => n.hardwareId === hardwareId && n.id !== editingNode?.id) || 
                                  availableNodes.some(n => n.hardwareId === hardwareId);
     
@@ -361,7 +363,6 @@ export default function DashboardPage() {
       return;
     }
 
-    // Check Node Name locally within personnel's own vault
     const isNodeNameDuplicate = nodes.some(n => n.nodeName.toLowerCase() === nodeName.toLowerCase() && n.id !== editingNode?.id);
     
     if (isNodeNameDuplicate) {
@@ -595,6 +596,9 @@ export default function DashboardPage() {
                       )}
 
                       <div className="flex gap-2 pt-2">
+                        <Button size="icon" variant="ghost" className="h-8 w-8 neo-btn text-muted-foreground hover:text-primary" onClick={() => setViewingBuddy(buddy)}>
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
                         <Button size="icon" variant="ghost" className="h-8 w-8 neo-btn text-muted-foreground hover:text-primary" onClick={() => { setEditingBuddy(buddy); setSelectedGroups(buddy.groups || []); setIsBuddyDialogOpen(true); }}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
@@ -663,6 +667,9 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <div className="flex gap-2 pt-2">
+                        <Button size="icon" variant="ghost" className="h-8 w-8 neo-btn text-muted-foreground hover:text-primary" onClick={() => setViewingNode(node)}>
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
                         <Button size="icon" variant="ghost" className="h-8 w-8 neo-btn text-muted-foreground hover:text-primary" onClick={() => { setEditingNode(node); setSelectedGroups(node.targetGroups || []); setIsNodeDialogOpen(true); }}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
@@ -1136,6 +1143,96 @@ export default function DashboardPage() {
           <div className="p-8 pt-4 border-t border-black/5 flex-shrink-0 bg-background/30">
             <Button onClick={() => setInterceptAlert(null)} className="w-full h-16 neo-btn bg-white text-foreground hover:bg-destructive hover:text-white text-[11px] font-black uppercase tracking-[0.4em] rounded-[1.5rem]">CLOSE COMMAND</Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Buddy Dialog */}
+      <Dialog open={!!viewingBuddy} onOpenChange={(open) => !open && setViewingBuddy(null)}>
+        <DialogContent className="neo-flat p-8 border-none bg-[#ECF0F3] max-w-md shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black uppercase tracking-tight text-foreground flex items-center gap-3">
+              <Users className="h-5 w-5 text-primary" /> Personnel Signature
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 mt-4">
+            <div className="neo-inset p-6 flex flex-col items-center gap-4 text-center">
+              <Avatar className="h-20 w-20 neo-flat border border-black/5">
+                <AvatarFallback className="bg-transparent text-2xl font-black text-foreground">{viewingBuddy?.name[0]}</AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="text-xl font-black uppercase tracking-widest text-foreground">{viewingBuddy?.name}</p>
+                <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mt-1">{viewingBuddy?.phoneNumber}</p>
+              </div>
+            </div>
+            
+            {viewingBuddy?.groups && viewingBuddy.groups.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-[9px] font-black text-foreground/40 uppercase tracking-widest ml-1">Assigned Protocols</p>
+                <div className="flex flex-wrap gap-2">
+                  {viewingBuddy.groups.map(gid => {
+                    const groupName = groups.find(g => g.id === gid)?.name || "Protocol Signal";
+                    return (
+                      <Badge key={gid} className="bg-primary/5 text-primary text-[8px] font-black border-none px-3 py-1 rounded-sm uppercase">
+                        {groupName}
+                      </Badge>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="mt-8">
+            <Button onClick={() => setViewingBuddy(null)} className="w-full h-14 neo-btn bg-white text-foreground hover:text-primary text-[10px] font-black uppercase tracking-[0.2em] rounded-[1.5rem]">CLOSE DOSSIER</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Node Dialog */}
+      <Dialog open={!!viewingNode} onOpenChange={(open) => !open && setViewingNode(null)}>
+        <DialogContent className="neo-flat p-8 border-none bg-[#ECF0F3] max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black uppercase tracking-tight text-foreground flex items-center gap-3">
+              <Cpu className="h-5 w-5 text-primary" /> Asset Signature
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto pr-2 space-y-6 mt-4">
+            <div className="neo-inset p-6 flex flex-col items-center gap-4 text-center">
+              <div className={cn("h-16 w-16 neo-flat flex items-center justify-center border border-black/5", viewingNode?.status === 'online' ? "text-green-500" : "text-muted-foreground")}>
+                <Cpu className="h-8 w-8" />
+              </div>
+              <div>
+                <p className="text-xl font-black uppercase tracking-widest text-foreground">{viewingNode?.nodeName}</p>
+                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">ID: {viewingNode?.hardwareId}</p>
+              </div>
+              <Badge className={cn("text-[8px] font-black px-4 py-1.5 uppercase rounded-full border border-black/5", viewingNode?.status === 'online' ? "bg-green-500/10 text-green-600" : "bg-muted text-muted-foreground")}>
+                <Circle className={cn("h-1.5 w-1.5 mr-2 fill-current", viewingNode?.status === 'online' ? "animate-pulse" : "opacity-30")} />
+                {viewingNode?.status}
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="neo-inset p-4 text-center space-y-1">
+                <p className="text-[8px] font-black text-foreground/40 uppercase tracking-tighter">Thermal Baseline</p>
+                <p className="text-sm font-black text-foreground">{viewingNode?.temperature || '--'}°C</p>
+              </div>
+              <div className="neo-inset p-4 text-center space-y-1">
+                <p className="text-[8px] font-black text-foreground/40 uppercase tracking-tighter">Owner Sector</p>
+                <p className="text-sm font-black text-foreground truncate">{viewingNode?.ownerEmail ? viewingNode.ownerEmail.split('@')[0] : 'Private'}</p>
+              </div>
+            </div>
+
+            {viewingNode?.latitude !== undefined && viewingNode?.longitude !== undefined && (
+              <div className="space-y-3">
+                 <p className="text-[9px] font-black text-foreground/40 uppercase tracking-widest ml-1">Asset Location</p>
+                 <div className="neo-flat overflow-hidden border border-black/5 shadow-lg rounded-[2rem]">
+                   <SOSMap latitude={viewingNode.latitude} longitude={viewingNode.longitude} mapLabel="LAST KNOWN" />
+                 </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="mt-8 pt-4 border-t border-black/5">
+            <Button onClick={() => setViewingNode(null)} className="w-full h-14 neo-btn bg-white text-foreground hover:text-primary text-[10px] font-black uppercase tracking-[0.2em] rounded-[1.5rem]">DISMISS PROFILE</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
