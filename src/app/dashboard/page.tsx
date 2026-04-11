@@ -50,7 +50,9 @@ import {
   Search,
   Users,
   Link2,
-  ShieldX
+  ShieldX,
+  UserPlus,
+  ArrowRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ref, push, remove, update, onChildAdded, off, get } from "firebase/database";
@@ -82,6 +84,8 @@ interface Node {
   status: 'online' | 'offline' | 'error';
   temperature?: number;
   targetGroups?: string[];
+  ownerUid?: string;
+  ownerEmail?: string;
 }
 
 export default function DashboardPage() {
@@ -111,12 +115,14 @@ export default function DashboardPage() {
   const groupsRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/buddyGroups`) : null, [rtdb, user]);
   const notificationsRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/notifications`) : null, [rtdb, user]);
   const linksRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/links`) : null, [rtdb, user]);
+  const allUsersRef = useMemo(() => userRole === 'guardian' ? ref(rtdb, `users`) : null, [rtdb, userRole]);
 
   const { data: buddiesData } = useRtdb(buddiesRef);
   const { data: nodesData } = useRtdb(nodesRef);
   const { data: groupsData } = useRtdb(groupsRef);
   const { data: notificationsData } = useRtdb(notificationsRef);
   const { data: linksData } = useRtdb(linksRef);
+  const { data: allUsersData } = useRtdb(allUsersRef);
 
   const buddies = useMemo(() => buddiesData ? Object.entries(buddiesData).map(([id, val]: [string, any]) => ({ ...val, id })) : [], [buddiesData]);
   const nodes = useMemo(() => nodesData ? Object.entries(nodesData).map(([id, val]: [string, any]) => ({ ...val, id })) : [], [nodesData]);
@@ -124,12 +130,31 @@ export default function DashboardPage() {
   const notifications = useMemo(() => notificationsData ? Object.entries(notificationsData).map(([id, val]: [string, any]) => ({ ...val, id, createdAt: val.createdAt || val.timestamp || 0 })).sort((a, b) => b.createdAt - a.createdAt) : [], [notificationsData]);
   const links = useMemo(() => linksData ? Object.entries(linksData).map(([id, val]: [string, any]) => ({ ...val, id })) : [], [linksData]);
 
+  const availableNodes = useMemo(() => {
+    if (!allUsersData || !user) return [];
+    const nodeDiscovery: Node[] = [];
+    Object.entries(allUsersData).forEach(([uid, userData]: [string, any]) => {
+      if (uid === user.uid) return;
+      if (userData.nodes) {
+        Object.entries(userData.nodes).forEach(([nid, nData]: [string, any]) => {
+          nodeDiscovery.push({
+            ...nData,
+            id: nid,
+            ownerUid: uid,
+            ownerEmail: userData.profile?.email || "Unknown Sector"
+          });
+        });
+      }
+    });
+    return nodeDiscovery;
+  }, [allUsersData, user]);
+
   const currentName = useMemo(() => user?.email?.split('@')[0] || "Personnel", [user]);
 
   const navItems = useMemo(() => {
     return userRole === 'guardian' 
-      ? [{ id: 'guardian', label: 'RADAR', icon: Radar }, { id: 'notifications', label: 'ALERTS', icon: Bell }, { id: 'settings', label: 'PROFILE', icon: Settings }]
-      : [{ id: 'buddies', label: 'BUDDIES', icon: Smartphone }, { id: 'nodes', label: 'NODES', icon: Cpu }, { id: 'linked', label: 'LINKED', icon: Link2 }, { id: 'notifications', label: 'ALERTS', icon: Bell }, { id: 'settings', label: 'PROFILE', icon: Settings }];
+      ? [{ id: 'guardian', label: 'RADAR', icon: Radar }, { id: 'linked', label: 'OUTGOING', icon: Link2 }, { id: 'notifications', label: 'ALERTS', icon: Bell }, { id: 'settings', label: 'PROFILE', icon: Settings }]
+      : [{ id: 'buddies', label: 'BUDDIES', icon: Smartphone }, { id: 'nodes', label: 'NODES', icon: Cpu }, { id: 'linked', label: 'INCOMING', icon: Link2 }, { id: 'notifications', label: 'ALERTS', icon: Bell }, { id: 'settings', label: 'PROFILE', icon: Settings }];
   }, [userRole]);
 
   useEffect(() => {
@@ -148,7 +173,7 @@ export default function DashboardPage() {
         const profile = snapshot.val();
         const role = profile?.role || 'user';
         setUserRole(role);
-        if (role === 'guardian' && (activeTab === 'buddies' || activeTab === 'linked')) {
+        if (role === 'guardian' && (activeTab === 'buddies' || activeTab === 'nodes')) {
           setActiveTab('guardian');
         }
       });
@@ -167,6 +192,29 @@ export default function DashboardPage() {
   }, [user, userLoading, router, rtdb, activeTab]);
 
   const logOutTerminal = useCallback(() => signOut(auth).then(() => router.push("/login")), [auth, router]);
+
+  const handleRequestLink = async (targetUid: string, hardwareId: string) => {
+    if (!user || !rtdb) return;
+    try {
+      const updates = {
+        [`users/${user.uid}/links/${targetUid}`]: {
+          status: 'requested',
+          hardwareId,
+          targetEmail: availableNodes.find(n => n.ownerUid === targetUid)?.ownerEmail
+        },
+        [`users/${targetUid}/links/${user.uid}`]: {
+          status: 'pending',
+          hardwareId,
+          guardianEmail: user.email,
+          createdAt: Date.now()
+        }
+      };
+      await update(ref(rtdb), updates);
+      toast({ title: "Link Requested", description: "Authorization signal dispatched to asset owner." });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Handshake Error", description: err.message });
+    }
+  };
 
   const handleAcceptLink = async (guardianId: string) => {
     if (!user || !rtdb) return;
@@ -547,18 +595,18 @@ export default function DashboardPage() {
 
           {activeTab === 'linked' && (
             <div className="space-y-8">
-              <h2 className="text-xl md:text-2xl font-black tracking-tight uppercase text-foreground">Link Authorization</h2>
+              <h2 className="text-xl md:text-2xl font-black tracking-tight uppercase text-foreground">Handshake Protocols</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {links.filter(l => l.status === 'pending').length === 0 && links.filter(l => l.status === 'linked').length === 0 ? (
+                {links.length === 0 ? (
                   <div className="col-span-full neo-flat p-12 text-center opacity-30 flex flex-col items-center">
                     <Link2 className="h-12 w-12 mb-6 text-foreground" />
-                    <p className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground">No Tactical Links Active</p>
+                    <p className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground">No Active Handshakes</p>
                   </div>
                 ) : (
                   <>
-                    {/* Pending Requests */}
-                    {links.filter(l => l.status === 'pending').map(link => (
-                      <div key={link.id} className="neo-flat p-6 space-y-4 hover:shadow-lg transition-shadow duration-300 group bg-primary/5">
+                    {/* Incoming Requests for User */}
+                    {userRole !== 'guardian' && links.filter(l => l.status === 'pending').map(link => (
+                      <div key={link.id} className="neo-flat p-6 space-y-4 bg-primary/5">
                         <div className="flex justify-between items-start">
                           <div className="flex gap-4 items-center">
                             <Avatar className="h-10 w-10 neo-inset border border-black/5">
@@ -571,57 +619,53 @@ export default function DashboardPage() {
                           </div>
                           <Badge className="bg-destructive/10 text-destructive text-[7px] font-black border-none px-2 py-0.5 rounded-sm uppercase animate-pulse">Pending</Badge>
                         </div>
-                        
-                        <div className="neo-inset p-3 bg-white/30 border border-black/5">
-                          <p className="text-[7px] font-black text-muted-foreground uppercase tracking-widest mb-1">Target Asset ID</p>
-                          <p className="text-[9px] font-black uppercase text-foreground truncate">{link.hardwareId || "N/A"}</p>
-                        </div>
-
-                        <div className="flex gap-3 pt-2">
-                          <Button 
-                            onClick={() => handleAcceptLink(link.id)}
-                            className="neo-btn flex-1 h-10 text-[9px] font-black uppercase bg-primary text-white hover:bg-primary/90"
-                          >
-                            <ShieldCheck className="h-3.5 w-3.5 mr-2" /> ACCEPT
-                          </Button>
-                          <Button 
-                            onClick={() => handleRejectLink(link.id)}
-                            className="neo-btn flex-1 h-10 text-[9px] font-black uppercase bg-background text-destructive hover:text-white hover:bg-destructive"
-                          >
-                            <ShieldX className="h-3.5 w-3.5 mr-2" /> REJECT
-                          </Button>
+                        <div className="neo-inset p-3 bg-white/30 border border-black/5 text-[9px] font-black uppercase text-foreground">Asset: {link.hardwareId}</div>
+                        <div className="flex gap-3">
+                          <Button onClick={() => handleAcceptLink(link.id)} className="flex-1 h-10 neo-btn bg-primary text-white text-[9px] font-black uppercase"><ShieldCheck className="h-3.5 w-3.5 mr-2" /> ACCEPT</Button>
+                          <Button onClick={() => handleRejectLink(link.id)} className="flex-1 h-10 neo-btn bg-background text-destructive text-[9px] font-black uppercase"><ShieldX className="h-3.5 w-3.5 mr-2" /> REJECT</Button>
                         </div>
                       </div>
                     ))}
 
-                    {/* Linked Guardians */}
-                    {links.filter(l => l.status === 'linked').map(link => (
-                      <div key={link.id} className="neo-flat p-6 space-y-4 hover:shadow-lg transition-shadow duration-300 group">
+                    {/* Outgoing Requests for Guardian */}
+                    {userRole === 'guardian' && links.map(link => (
+                      <div key={link.id} className="neo-flat p-6 space-y-4">
+                        <div className="flex justify-between items-start">
+                          <div className="flex gap-4 items-center">
+                            <Avatar className="h-10 w-10 neo-inset border border-black/5">
+                              <AvatarFallback className="bg-transparent text-[10px] font-black text-foreground">{link.targetEmail?.[0].toUpperCase() || 'U'}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-foreground">Link Protocol</p>
+                              <p className="text-[8px] font-black text-muted-foreground mt-1 uppercase tracking-widest truncate max-w-[120px]">{link.targetEmail}</p>
+                            </div>
+                          </div>
+                          <Badge className={cn("text-[7px] font-black px-2 py-0.5 rounded-sm uppercase", link.status === 'linked' ? "bg-green-500/10 text-green-600" : "bg-primary/10 text-primary")}>
+                            {link.status}
+                          </Badge>
+                        </div>
+                        <div className="neo-inset p-3 bg-white/20 border border-black/5 text-[9px] font-black uppercase text-foreground">Asset ID: {link.hardwareId}</div>
+                        <Button onClick={() => handleRejectLink(link.id)} variant="ghost" className="w-full h-8 text-[8px] font-black uppercase text-muted-foreground hover:text-destructive"><Trash2 className="h-3 w-3 mr-2" /> TERMINATE</Button>
+                      </div>
+                    ))}
+
+                    {/* Linked for User */}
+                    {userRole !== 'guardian' && links.filter(l => l.status === 'linked').map(link => (
+                      <div key={link.id} className="neo-flat p-6 space-y-4">
                         <div className="flex justify-between items-start">
                           <div className="flex gap-4 items-center">
                             <Avatar className="h-10 w-10 neo-inset border border-black/5">
                               <AvatarFallback className="bg-transparent text-[10px] font-black text-foreground">{link.guardianEmail?.[0].toUpperCase() || 'G'}</AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className="text-[10px] font-black uppercase tracking-widest text-foreground">Linked Guardian</p>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-foreground">Authorized Guardian</p>
                               <p className="text-[8px] font-black text-muted-foreground mt-1 uppercase tracking-widest truncate max-w-[120px]">{link.guardianEmail}</p>
                             </div>
                           </div>
-                          <Badge className="bg-green-500/10 text-green-600 text-[7px] font-black border-none px-2 py-0.5 rounded-sm uppercase">Active</Badge>
+                          <Badge className="bg-green-500/10 text-green-600 text-[7px] font-black px-2 py-0.5 rounded-sm uppercase">Linked</Badge>
                         </div>
-                        
-                        <div className="neo-inset p-3 border border-black/5 bg-white/20">
-                          <p className="text-[7px] font-black text-muted-foreground uppercase tracking-widest mb-1">Authorized Asset</p>
-                          <p className="text-[9px] font-black uppercase text-foreground truncate">{link.hardwareId || "N/A"}</p>
-                        </div>
-
-                        <Button 
-                          onClick={() => handleRejectLink(link.id)}
-                          variant="ghost" 
-                          className="w-full h-8 text-[8px] font-black uppercase text-muted-foreground hover:text-destructive hover:bg-destructive/5"
-                        >
-                          <Trash2 className="h-3 w-3 mr-2" /> TERMINATE LINK
-                        </Button>
+                        <div className="neo-inset p-3 bg-white/20 border border-black/5 text-[9px] font-black uppercase text-foreground">Asset: {link.hardwareId}</div>
+                        <Button onClick={() => handleRejectLink(link.id)} variant="ghost" className="w-full h-8 text-[8px] font-black uppercase text-muted-foreground hover:text-destructive"><ShieldX className="h-3 w-3 mr-2" /> REVOKE ACCESS</Button>
                       </div>
                     ))}
                   </>
@@ -676,18 +720,46 @@ export default function DashboardPage() {
           {activeTab === 'guardian' && (
             <div className="space-y-8">
               <h2 className="text-xl md:text-2xl font-black tracking-tight uppercase text-foreground">Guardian Radar</h2>
-              <div className="neo-flat p-8 space-y-8">
-                <div className="space-y-4">
-                  <Label className="text-[10px] font-black text-foreground uppercase tracking-widest ml-1">Scan for Hardware Asset</Label>
-                  <div className="flex gap-3">
-                    <Input placeholder="ENTER HARDWARE ID SIGNATURE" className="h-12 neo-inset bg-background text-foreground border-none px-5 text-[10px] font-black uppercase tracking-widest flex-1" />
-                    <Button className="h-12 w-12 neo-btn bg-background text-primary"><Search className="h-5 w-5" /></Button>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {availableNodes.length === 0 ? (
+                  <div className="col-span-full neo-flat p-12 text-center opacity-30 flex flex-col items-center">
+                    <Radar className="h-12 w-12 mb-6 text-foreground" />
+                    <p className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground">No Assets Detected in Proximity</p>
                   </div>
-                </div>
-                <div className="p-12 text-center opacity-30 flex flex-col items-center">
-                  <Radar className="h-12 w-12 mb-6 text-foreground" />
-                  <p className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground">No Linked Assets Tracked</p>
-                </div>
+                ) : (
+                  availableNodes.map(node => {
+                    const existingLink = links.find(l => l.hardwareId === node.hardwareId);
+                    return (
+                      <div key={node.id} className="neo-flat p-6 space-y-4 group">
+                        <div className="flex justify-between items-start">
+                          <div className="flex gap-4 items-center">
+                            <div className="h-10 w-10 neo-inset flex items-center justify-center text-primary/40"><Cpu className="h-5 w-5" /></div>
+                            <div>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-foreground">{node.nodeName}</p>
+                              <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest truncate max-w-[120px]">{node.ownerEmail}</p>
+                            </div>
+                          </div>
+                          <Badge className="bg-background text-foreground text-[7px] font-black px-2 py-0.5 border border-black/5 uppercase">HW-{node.hardwareId.slice(-4)}</Badge>
+                        </div>
+                        <div className="neo-inset p-3 border border-black/5 bg-white/20 text-[8px] font-black uppercase text-foreground/60">
+                          Precision Fix: {node.hardwareId}
+                        </div>
+                        {existingLink ? (
+                          <div className="w-full py-3 neo-inset text-center bg-white/50 border border-black/5">
+                            <p className="text-[8px] font-black uppercase text-primary flex items-center justify-center gap-2">
+                              {existingLink.status === 'linked' ? <ShieldCheck className="h-3 w-3" /> : <Loader2 className="h-3 w-3 animate-spin" />}
+                              {existingLink.status === 'linked' ? "ACTIVE LINK" : "PENDING AUTHORIZATION"}
+                            </p>
+                          </div>
+                        ) : (
+                          <Button onClick={() => handleRequestLink(node.ownerUid!, node.hardwareId)} className="w-full h-10 neo-btn bg-background text-foreground hover:text-primary text-[9px] font-black uppercase tracking-widest">
+                            <UserPlus className="h-3.5 w-3.5 mr-2" /> REQUEST HANDSHAKE
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
           )}
