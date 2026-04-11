@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, useState } from 'react';
 import L from 'leaflet';
 import { Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,7 @@ export default function SOSMap({ latitude, longitude, label }: SOSMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
-  const mounted = useRef(true);
+  const [isMapReady, setIsMapReady] = useState(false);
 
   const { lat, lng, isValid } = useMemo(() => {
     const latVal = typeof latitude === 'string' ? parseFloat(latitude) : latitude;
@@ -25,9 +25,7 @@ export default function SOSMap({ latitude, longitude, label }: SOSMapProps) {
     const valid = !isNaN(latVal) && 
                   !isNaN(lngVal) && 
                   isFinite(latVal) && 
-                  isFinite(lngVal) &&
-                  latVal !== 0 && 
-                  lngVal !== 0;
+                  isFinite(lngVal);
 
     return { lat: latVal, lng: lngVal, isValid: valid };
   }, [latitude, longitude]);
@@ -39,7 +37,6 @@ export default function SOSMap({ latitude, longitude, label }: SOSMapProps) {
   };
 
   useEffect(() => {
-    mounted.current = true;
     if (!mapRef.current || !isValid || mapInstance.current) return;
 
     try {
@@ -56,31 +53,25 @@ export default function SOSMap({ latitude, longitude, label }: SOSMapProps) {
       L.control.zoom({ position: 'bottomright' }).addTo(map);
 
       mapInstance.current = map;
+      setIsMapReady(true);
 
-      const timer1 = setTimeout(() => {
-        if (mounted.current && mapInstance.current) mapInstance.current.invalidateSize();
-      }, 100);
-      const timer2 = setTimeout(() => {
-        if (mounted.current && mapInstance.current) mapInstance.current.invalidateSize();
-      }, 500);
+      // Force a resize check after a short delay to handle modal animations
+      const timer = setTimeout(() => {
+        if (mapInstance.current) mapInstance.current.invalidateSize();
+      }, 300);
 
       return () => {
-        clearTimeout(timer1);
-        clearTimeout(timer2);
+        clearTimeout(timer);
+        if (mapInstance.current) {
+          mapInstance.current.remove();
+          mapInstance.current = null;
+          markerRef.current = null;
+        }
       };
     } catch (error) {
-      console.warn("Tactical Map Initialization Error:", error);
+      console.warn("Tactical Map Execution Error:", error);
     }
-
-    return () => {
-      mounted.current = false;
-      if (mapInstance.current) {
-        mapInstance.current.remove();
-        mapInstance.current = null;
-        markerRef.current = null;
-      }
-    };
-  }, []);
+  }, [isValid]);
 
   useEffect(() => {
     if (!mapInstance.current || !isValid) return;
@@ -102,9 +93,9 @@ export default function SOSMap({ latitude, longitude, label }: SOSMapProps) {
 
     const popupContent = `
       <div class="p-2 min-w-[140px]">
-        <b class="text-destructive uppercase font-black text-[10px] block mb-1 tracking-wider">${label || 'SOS SIGNAL'}</b>
-        <span class="text-[8px] uppercase font-bold tracking-widest text-slate-800">Critical Alert Detected</span>
-        <div class="mt-3 p-2 bg-slate-50 rounded-lg text-[8px] font-mono text-slate-600 border border-slate-100 shadow-inner">
+        <b class="text-[#1A2B3C] uppercase font-black text-[10px] block mb-1 tracking-wider">${label || 'SOS SIGNAL'}</b>
+        <span class="text-[8px] uppercase font-bold tracking-widest text-[#1A2B3C]/60">Precision Coordinate Fix</span>
+        <div class="mt-3 p-2 bg-[#ECF0F3] rounded-lg text-[8px] font-mono text-[#1A2B3C] border border-black/5 shadow-inner">
           LAT: ${lat.toFixed(6)}<br/>
           LNG: ${lng.toFixed(6)}
         </div>
@@ -127,7 +118,7 @@ export default function SOSMap({ latitude, longitude, label }: SOSMapProps) {
 
     mapInstance.current.panTo([lat, lng], { animate: true });
 
-  }, [lat, lng, label, isValid]);
+  }, [lat, lng, label, isValid, isMapReady]);
 
   if (!isValid) {
     return (
@@ -168,6 +159,7 @@ export default function SOSMap({ latitude, longitude, label }: SOSMapProps) {
         }
         .leaflet-popup-content {
           margin: 12px;
+          color: #1a2b3c !important;
         }
         .leaflet-popup-tip {
           display: none;

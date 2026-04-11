@@ -92,7 +92,7 @@ export default function DashboardPage() {
   // SOS Intercept States
   const [interceptAlert, setInterceptAlert] = useState<any>(null);
 
-  // Memoized Refs and Data
+  // Memoized Hooks at Top Level
   const buddiesRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/buddies`) : null, [rtdb, user]);
   const nodesRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/nodes`) : null, [rtdb, user]);
   const groupsRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/buddyGroups`) : null, [rtdb, user]);
@@ -142,8 +142,8 @@ export default function DashboardPage() {
         const now = Date.now();
         const timestamp = val.timestamp || val.createdAt || 0;
         
-        // Only intercept fresh SOS signals that aren't TrackResponses
-        if (val.type === 'sos' && val.trigger !== 'TrackResponse' && (now - timestamp < 30000)) {
+        // Intercept fresh SOS signals that aren't legacy track responses
+        if (val.type === 'sos' && val.trigger !== 'TrackResponse' && (now - timestamp < 45000)) {
           setInterceptAlert({ ...val, id: snapshot.key });
         }
       });
@@ -477,7 +477,17 @@ export default function DashboardPage() {
                             </div>
                           </div>
                           <div className="flex gap-2 w-full sm:w-auto">
-                            <Button size="sm" className="neo-btn flex-1 sm:flex-none h-8 px-4 text-[8px] font-bold uppercase tracking-widest bg-background text-foreground hover:text-primary">
+                            <Button 
+                              size="sm" 
+                              className="neo-btn flex-1 sm:flex-none h-8 px-4 text-[8px] font-bold uppercase tracking-widest bg-background text-foreground hover:text-primary"
+                              onClick={() => {
+                                if (n.latitude !== undefined && n.longitude !== undefined) {
+                                  setInterceptAlert({ ...n, id: n.id });
+                                } else {
+                                  toast({ variant: "destructive", title: "Coordinates Unavailable", description: "This alert contains no spatial positioning data." });
+                                }
+                              }}
+                            >
                               <Eye className="h-3.5 w-3.5 mr-2 text-primary/60" /> TACTICAL MAP
                             </Button>
                           </div>
@@ -521,7 +531,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="text-center space-y-2">
                     <p className="text-xl font-black uppercase tracking-[0.2em] text-foreground">{currentName}</p>
-                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{user.email}</p>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{user?.email}</p>
                   </div>
                   <Button onClick={() => router.push('/profile')} className="neo-btn h-12 px-8 text-[10px] font-bold uppercase tracking-[0.3em] bg-background text-foreground hover:text-primary transition-all">
                     <Settings className="h-4 w-4 mr-3 text-primary/60" /> CONFIGURE HUB
@@ -542,21 +552,25 @@ export default function DashboardPage() {
                   <AlertTriangle className="h-6 w-6" />
                 </div>
                 <div>
-                  <DialogTitle className="text-xl font-black uppercase tracking-tight text-foreground">Tactical SOS Intercept</DialogTitle>
-                  <p className="text-[9px] font-bold text-destructive uppercase tracking-widest mt-1">High Intensity Alert Active</p>
+                  <DialogTitle className="text-xl font-black uppercase tracking-tight text-foreground">Tactical Intercept</DialogTitle>
+                  <p className={cn("text-[9px] font-bold uppercase tracking-widest mt-1", interceptAlert?.type === 'sos' ? "text-destructive" : "text-primary")}>
+                    {interceptAlert?.type === 'sos' ? "High Intensity Alert Active" : "Tactical Telemetry Active"}
+                  </p>
                 </div>
               </div>
-              <Badge className="bg-destructive text-foreground border-none text-[8px] font-bold px-4 py-1 animate-pulse uppercase shadow-[0_0_15px_rgba(239,68,68,0.5)]">Critical</Badge>
+              {interceptAlert?.type === 'sos' && (
+                <Badge className="bg-destructive text-foreground border-none text-[8px] font-bold px-4 py-1 animate-pulse uppercase shadow-[0_0_15px_rgba(239,68,68,0.5)]">Critical</Badge>
+              )}
             </div>
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto px-8 py-8 space-y-6">
-            <div className="neo-inset p-6 space-y-4 border border-destructive/10">
+            <div className="neo-inset p-6 space-y-4 border border-black/5">
               <div className="flex items-center gap-4">
                  <div className="h-10 w-10 neo-flat flex items-center justify-center text-foreground bg-white">
-                   <Smartphone className="h-5 w-5 text-destructive/60" />
+                   {interceptAlert?.type === 'sos' ? <AlertTriangle className="h-5 w-5 text-destructive/60" /> : <Radar className="h-5 w-5 text-primary/60" />}
                  </div>
-                 <p className="text-[10px] font-bold uppercase tracking-widest leading-relaxed text-foreground">{interceptAlert?.message}</p>
+                 <p className="text-[10px] font-bold uppercase tracking-widest leading-relaxed text-foreground">{interceptAlert?.message || 'Awaiting Device Telemetry'}</p>
               </div>
               <div className="grid grid-cols-1 gap-4">
                  <div className="neo-flat bg-background/50 p-4 space-y-1 border border-black/5">
@@ -566,12 +580,12 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {interceptAlert?.latitude && (
-              <div className="neo-flat overflow-hidden border border-destructive/10 shadow-lg">
+            {(interceptAlert?.latitude !== undefined && interceptAlert?.longitude !== undefined) && (
+              <div className="neo-flat overflow-hidden border border-black/5 shadow-lg">
                 <SOSMap 
                   latitude={interceptAlert.latitude} 
                   longitude={interceptAlert.longitude} 
-                  label="SOS ORIGIN"
+                  label={interceptAlert?.type === 'sos' ? "SOS ORIGIN" : "ASSET POSITION"}
                 />
               </div>
             )}
@@ -580,7 +594,7 @@ export default function DashboardPage() {
           <div className="p-8 pt-4 border-t border-black/5 flex-shrink-0 bg-background/30">
             <Button 
               onClick={() => setInterceptAlert(null)}
-              className="w-full h-16 neo-btn bg-white text-destructive hover:bg-destructive hover:text-foreground text-[11px] font-bold uppercase tracking-[0.4em] transition-all"
+              className="w-full h-16 neo-btn bg-white text-foreground hover:bg-destructive hover:text-white text-[11px] font-bold uppercase tracking-[0.4em] transition-all"
             >
               CLOSE COMMAND
             </Button>
