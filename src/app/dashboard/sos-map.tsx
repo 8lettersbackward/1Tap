@@ -9,10 +9,10 @@ import { Button } from '@/components/ui/button';
 interface SOSMapProps {
   latitude: number | string;
   longitude: number | string;
-  label?: string;
+  mapLabel?: string;
 }
 
-export default function SOSMap({ latitude, longitude, label }: SOSMapProps) {
+export default function SOSMap({ latitude, longitude, mapLabel }: SOSMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
@@ -55,7 +55,6 @@ export default function SOSMap({ latitude, longitude, label }: SOSMapProps) {
       mapInstance.current = map;
       setIsMapReady(true);
 
-      // Force a resize check after a short delay to handle modal animations
       const timer = setTimeout(() => {
         if (mapInstance.current) mapInstance.current.invalidateSize();
       }, 300);
@@ -93,8 +92,8 @@ export default function SOSMap({ latitude, longitude, label }: SOSMapProps) {
 
     const popupContent = `
       <div class="p-2 min-w-[140px]">
-        <b class="text-[#1A2B3C] uppercase font-black text-[10px] block mb-1 tracking-wider">${label || 'SOS SIGNAL'}</b>
-        <span class="text-[8px] uppercase font-bold tracking-widest text-[#1A2B3C]/60">Precision Coordinate Fix</span>
+        <b class="text-[#1A2B3C] uppercase font-black text-[10px] block mb-1 tracking-wider">${mapLabel || 'SOS SIGNAL'}</b>
+        <span class="text-[8px] uppercase font-bold tracking-widest text-[#1A2B3C]/60">Coordinate Fix</span>
         <div class="mt-3 p-2 bg-[#ECF0F3] rounded-lg text-[8px] font-mono text-[#1A2B3C] border border-black/5 shadow-inner">
           LAT: ${lat.toFixed(6)}<br/>
           LNG: ${lng.toFixed(6)}
@@ -118,7 +117,7 @@ export default function SOSMap({ latitude, longitude, label }: SOSMapProps) {
 
     mapInstance.current.panTo([lat, lng], { animate: true });
 
-  }, [lat, lng, label, isValid, isMapReady]);
+  }, [lat, lng, mapLabel, isValid, isMapReady]);
 
   if (!isValid) {
     return (
@@ -144,7 +143,6 @@ export default function SOSMap({ latitude, longitude, label }: SOSMapProps) {
           variant="secondary" 
           className="h-10 w-10 neo-btn bg-white/90 hover:bg-white transition-all shadow-lg"
           onClick={resetView}
-          title="Recenter Signal"
         >
           <Target className="h-5 w-5 text-primary" />
         </Button>

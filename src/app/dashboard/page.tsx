@@ -83,7 +83,6 @@ interface Node {
 }
 
 export default function DashboardPage() {
-  // 1. ALL HOOKS MUST BE AT THE TOP
   const { user, loading: userLoading } = useUser();
   const { auth } = useFirebase();
   const rtdb = useDatabase();
@@ -94,7 +93,6 @@ export default function DashboardPage() {
   const [hasMounted, setHasMounted] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
 
-  // CRUD States
   const [isBuddyDialogOpen, setIsBuddyDialogOpen] = useState(false);
   const [isNodeDialogOpen, setIsNodeDialogOpen] = useState(false);
   const [isProtocolDialogOpen, setIsProtocolDialogOpen] = useState(false);
@@ -102,11 +100,8 @@ export default function DashboardPage() {
   const [editingNode, setEditingNode] = useState<Node | null>(null);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   
-  // Confirmation States
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string, type: 'buddy' | 'node' | 'group', name: string } | null>(null);
   const [pendingUpdate, setPendingUpdate] = useState<{ type: 'buddy' | 'node', data: any } | null>(null);
-
-  // SOS Intercept States
   const [interceptAlert, setInterceptAlert] = useState<any>(null);
 
   const buddiesRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/buddies`) : null, [rtdb, user]);
@@ -185,13 +180,14 @@ export default function DashboardPage() {
     };
 
     if (editingBuddy) {
-      // FIX: Close main dialog before opening confirmation to avoid Radix/ShadCN modal freeze
       setIsBuddyDialogOpen(false);
-      setPendingUpdate({ type: 'buddy', data: buddyData });
+      setTimeout(() => {
+        setPendingUpdate({ type: 'buddy', data: buddyData });
+      }, 100);
     } else {
       try {
         await push(ref(rtdb, `users/${user.uid}/buddies`), buddyData);
-        toast({ title: "Personnel Enlisted", description: "New buddy added to vault with protocol mapping." });
+        toast({ title: "Personnel Enlisted", description: "New buddy added to vault." });
         setIsBuddyDialogOpen(false);
       } catch (err: any) {
         toast({ variant: "destructive", title: "Vault Error", description: err.message });
@@ -212,13 +208,14 @@ export default function DashboardPage() {
     };
 
     if (editingNode) {
-      // FIX: Close main dialog before opening confirmation to avoid Radix/ShadCN modal freeze
       setIsNodeDialogOpen(false);
-      setPendingUpdate({ type: 'node', data: nodeData });
+      setTimeout(() => {
+        setPendingUpdate({ type: 'node', data: nodeData });
+      }, 100);
     } else {
       try {
         await push(ref(rtdb, `users/${user.uid}/nodes`), nodeData);
-        toast({ title: "Node Armed", description: "New hardware asset registered with target protocols." });
+        toast({ title: "Node Armed", description: "Hardware asset registered." });
         setIsNodeDialogOpen(false);
       } catch (err: any) {
         toast({ variant: "destructive", title: "Hardware Error", description: err.message });
@@ -228,13 +225,10 @@ export default function DashboardPage() {
 
   const executeUpdate = async () => {
     if (!user || !rtdb || !pendingUpdate) return;
-    
-    // Extract data before clearing state
     const { type, data } = pendingUpdate;
     const currentEditingBuddy = editingBuddy;
     const currentEditingNode = editingNode;
 
-    // Clear confirmation state immediately to close the AlertDialog
     setPendingUpdate(null);
 
     try {
@@ -245,7 +239,7 @@ export default function DashboardPage() {
         await update(ref(rtdb, `users/${user.uid}/nodes/${currentEditingNode.id}`), data);
         setEditingNode(null);
       }
-      toast({ title: "Synchronization Complete", description: "Data successfully committed to master vault." });
+      toast({ title: "Sync Complete", description: "Data committed to master vault." });
     } catch (err: any) {
       toast({ variant: "destructive", title: "Sync Error", description: err.message });
     }
@@ -255,7 +249,7 @@ export default function DashboardPage() {
     if (!user || !rtdb) return;
     try {
       await remove(ref(rtdb, `users/${user.uid}/buddies/${id}`));
-      toast({ title: "Personnel Purged", description: "Identity signature removed from vault." });
+      toast({ title: "Personnel Purged", description: "Identity signature removed." });
     } catch (err: any) {
       toast({ variant: "destructive", title: "Purge Error", description: err.message });
     }
@@ -265,7 +259,7 @@ export default function DashboardPage() {
     if (!user || !rtdb) return;
     try {
       await remove(ref(rtdb, `users/${user.uid}/nodes/${id}`));
-      toast({ title: "Node Decommissioned", description: "Hardware asset removed from network." });
+      toast({ title: "Node Decommissioned", description: "Asset removed from network." });
     } catch (err: any) {
       toast({ variant: "destructive", title: "Purge Error", description: err.message });
     }
@@ -287,7 +281,7 @@ export default function DashboardPage() {
     const name = formData.get('groupName') as string;
     try {
       await push(ref(rtdb, `users/${user.uid}/buddyGroups`), { name });
-      toast({ title: "Protocol Created", description: `Security group '${name}' initialized.` });
+      toast({ title: "Protocol Created", description: `Security group initialized.` });
       (e.target as HTMLFormElement).reset();
     } catch (err: any) {
       toast({ variant: "destructive", title: "Protocol Error", description: err.message });
@@ -306,7 +300,6 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-background text-foreground overflow-x-hidden">
-      {/* Mobile Bottom Navigation Bar */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden flex justify-around items-center p-4 bg-background/80 backdrop-blur-md border-t border-black/5 pb-8 shadow-[0_-10px_20px_rgba(0,0,0,0.05)]">
         {navItems.map((item) => (
           <button
@@ -326,7 +319,6 @@ export default function DashboardPage() {
         ))}
       </nav>
 
-      {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-72 p-6 h-screen sticky top-0 z-40 border-r border-black/5 bg-background/50 flex-col justify-between">
         <div className="space-y-10">
           <div className="flex items-center gap-3 px-2">
@@ -374,7 +366,6 @@ export default function DashboardPage() {
         </div>
       </aside>
 
-      {/* Main Content Area */}
       <main className="flex-1 p-6 sm:p-8 md:p-8 w-full pb-32 md:pb-8">
         <div className="max-w-6xl mx-auto mt-4 md:mt-0">
           {activeTab === 'buddies' && (
@@ -591,7 +582,6 @@ export default function DashboardPage() {
         </div>
       </main>
 
-      {/* Confirmation Dialogs */}
       <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
         <AlertDialogContent className="neo-flat p-8 border-none bg-[#ECF0F3] max-w-md shadow-2xl">
           <AlertDialogHeader>
@@ -599,7 +589,7 @@ export default function DashboardPage() {
               <AlertTriangle className="h-5 w-5 text-destructive" /> Confirm Purge
             </AlertDialogTitle>
             <AlertDialogDescription className="text-[10px] font-black uppercase tracking-widest text-foreground pt-4 leading-relaxed">
-              Are you sure you want to remove <span className="text-foreground">{deleteConfirm?.name}</span>? This action is permanent and will decommission the asset from the terminal network.
+              Are you sure you want to remove <span className="text-foreground">{deleteConfirm?.name}</span>? This action is permanent.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="pt-6 gap-3">
@@ -623,10 +613,10 @@ export default function DashboardPage() {
         <AlertDialogContent className="neo-flat p-8 border-none bg-[#ECF0F3] max-w-md shadow-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-xl font-black uppercase tracking-tight text-foreground flex items-center gap-3">
-              <ShieldCheck className="h-5 w-5 text-primary" /> Confirm Synchronization
+              <ShieldCheck className="h-5 w-5 text-primary" /> Confirm Sync
             </AlertDialogTitle>
             <AlertDialogDescription className="text-[10px] font-black uppercase tracking-widest text-foreground pt-4 leading-relaxed">
-              Are you sure you want to synchronize these changes to the master vault? Existing data signatures will be overwritten.
+              Are you sure you want to synchronize these changes?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="pt-6 gap-3">
@@ -641,7 +631,6 @@ export default function DashboardPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Buddy Dialog */}
       <Dialog open={isBuddyDialogOpen} onOpenChange={setIsBuddyDialogOpen}>
         <DialogContent className="neo-flat p-8 border-none bg-[#ECF0F3] max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
           <DialogHeader>
@@ -656,7 +645,7 @@ export default function DashboardPage() {
               <Input name="name" defaultValue={editingBuddy?.name} required className="h-12 neo-inset bg-background text-foreground border-none px-5 font-black uppercase text-[10px]" />
             </div>
             <div className="space-y-2">
-              <Label className="text-[9px] font-black text-foreground uppercase tracking-widest ml-1">Contact Signal (Phone)</Label>
+              <Label className="text-[9px] font-black text-foreground uppercase tracking-widest ml-1">Contact Signal</Label>
               <Input name="phoneNumber" defaultValue={editingBuddy?.phoneNumber} required className="h-12 neo-inset bg-background text-foreground border-none px-5 font-black uppercase text-[10px]" />
             </div>
             
@@ -664,7 +653,7 @@ export default function DashboardPage() {
               <Label className="text-[9px] font-black text-foreground uppercase tracking-widest ml-1">Protocol Assignment</Label>
               <ScrollArea className="h-40 neo-inset p-4 bg-white/20 rounded-[1.5rem]">
                 {groups.length === 0 ? (
-                  <p className="text-[8px] text-center text-muted-foreground uppercase py-8 font-black">No protocols defined in hub</p>
+                  <p className="text-[8px] text-center text-muted-foreground uppercase py-8 font-black">No protocols defined</p>
                 ) : (
                   groups.map(group => (
                     <div key={group.id} className="flex items-center space-x-3 mb-4 last:mb-0">
@@ -690,7 +679,6 @@ export default function DashboardPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Node Dialog */}
       <Dialog open={isNodeDialogOpen} onOpenChange={setIsNodeDialogOpen}>
         <DialogContent className="neo-flat p-8 border-none bg-[#ECF0F3] max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
           <DialogHeader>
@@ -705,7 +693,7 @@ export default function DashboardPage() {
               <Input name="nodeName" defaultValue={editingNode?.nodeName} required className="h-12 neo-inset bg-background text-foreground border-none px-5 font-black uppercase text-[10px]" />
             </div>
             <div className="space-y-2">
-              <Label className="text-[9px] font-black text-foreground uppercase tracking-widest ml-1">Hardware ID Signature</Label>
+              <Label className="text-[9px] font-black text-foreground uppercase tracking-widest ml-1">Hardware ID</Label>
               <Input name="hardwareId" defaultValue={editingNode?.hardwareId} required className="h-12 neo-inset bg-background text-foreground border-none px-5 font-black uppercase text-[10px]" />
             </div>
 
@@ -713,7 +701,7 @@ export default function DashboardPage() {
               <Label className="text-[9px] font-black text-foreground uppercase tracking-widest ml-1">Target Protocols</Label>
               <ScrollArea className="h-40 neo-inset p-4 bg-white/20 rounded-[1.5rem]">
                 {groups.length === 0 ? (
-                  <p className="text-[8px] text-center text-muted-foreground uppercase py-8 font-black">No protocols defined in hub</p>
+                  <p className="text-[8px] text-center text-muted-foreground uppercase py-8 font-black">No protocols defined</p>
                 ) : (
                   groups.map(group => (
                     <div key={group.id} className="flex items-center space-x-3 mb-4 last:mb-0">
@@ -798,7 +786,7 @@ export default function DashboardPage() {
             </div>
             {interceptAlert?.latitude !== undefined && interceptAlert?.longitude !== undefined && (
               <div className="neo-flat overflow-hidden border border-black/5 shadow-lg rounded-[2rem]">
-                <SOSMap latitude={interceptAlert.latitude} longitude={interceptAlert.longitude} label={interceptAlert?.type === 'sos' ? "SOS ORIGIN" : "ASSET POSITION"} />
+                <SOSMap latitude={interceptAlert.latitude} longitude={interceptAlert.longitude} mapLabel={interceptAlert?.type === 'sos' ? "SOS ORIGIN" : "ASSET POSITION"} />
               </div>
             )}
           </div>
