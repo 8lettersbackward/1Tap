@@ -4,26 +4,26 @@
 
 @layer base {
   :root {
-    --background: 206 82% 94%;
-    --foreground: 247 86% 23%;
-    --card: 0 0% 100%;
-    --card-foreground: 247 86% 23%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 247 86% 23%;
-    --primary: 213 85% 61%;
+    --background: 0 0% 83%; /* #D3D3D3 */
+    --foreground: 0 0% 29%; /* #4A4A4A */
+    --card: 0 0% 83%;
+    --card-foreground: 0 0% 29%;
+    --popover: 0 0% 83%;
+    --popover-foreground: 0 0% 29%;
+    --primary: 0 0% 29%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 194 86% 62%;
-    --secondary-foreground: 247 86% 23%;
-    --muted: 206 30% 85%;
-    --muted-foreground: 247 30% 40%;
-    --accent: 235 61% 43%;
+    --secondary: 0 0% 40%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 75%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 0 0% 29%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 213 85% 61% / 0.2;
-    --input: 213 85% 61% / 0.2;
-    --ring: 213 85% 61%;
-    --radius: 1.5rem;
+    --border: 0 0% 75%;
+    --input: 0 0% 75%;
+    --ring: 0 0% 29%;
+    --radius: 2rem;
   }
 }
 
@@ -37,10 +37,42 @@
   }
 }
 
+@layer components {
+  .neo-flat {
+    background: #D3D3D3;
+    box-shadow: 8px 8px 16px #b3b3b3, -8px -8px 16px #f3f3f3;
+    @apply rounded-[2rem] border-none;
+  }
+
+  .neo-inset {
+    background: #D3D3D3;
+    box-shadow: inset 8px 8px 16px #b3b3b3, inset -8px -8px 16px #f3f3f3;
+    @apply rounded-[2rem] border-none;
+  }
+
+  .neo-pressed {
+    background: #D3D3D3;
+    box-shadow: inset 4px 4px 8px #b3b3b3, inset -4px -4px 8px #f3f3f3;
+    @apply rounded-[2rem] border-none;
+  }
+
+  .neo-btn {
+    background: #D3D3D3;
+    box-shadow: 6px 6px 12px #b3b3b3, -6px -6px 12px #f3f3f3;
+    @apply rounded-[1.5rem] border-none transition-all active:shadow-inner;
+  }
+
+  .neo-btn-active {
+    background: #D3D3D3;
+    box-shadow: inset 4px 4px 8px #b3b3b3, inset -4px -4px 8px #f3f3f3;
+    @apply rounded-[1.5rem] border-none;
+  }
+}
+
 .glass-card {
-  @apply backdrop-blur-xl bg-white/60 border border-primary/10 shadow-lg;
+  @apply neo-flat;
 }
 
 .neo-blur {
-  @apply backdrop-blur-2xl bg-white/80;
+  @apply bg-background/80 backdrop-blur-md;
 }

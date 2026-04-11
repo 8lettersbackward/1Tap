@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -20,7 +19,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { user, loading: userLoading } = useUser();
-  const rtdb = useDatabase();
   const { toast } = useToast();
   const router = useRouter();
   const auth = useAuth();
@@ -46,7 +44,7 @@ export default function LoginPage() {
         toast({
           variant: "destructive",
           title: "Identity Unverified",
-          description: "Please confirm your email signature before proceeding.",
+          description: "Please confirm your email signature.",
         });
         router.push("/verify-email");
         return;
@@ -57,7 +55,7 @@ export default function LoginPage() {
       toast({
         variant: "destructive",
         title: "Access Denied",
-        description: error.message || "Credential verification failed.",
+        description: error.message || "Verification failed.",
       });
     } finally {
       setLoading(false);
@@ -72,71 +70,66 @@ export default function LoginPage() {
     );
   }
 
-  if (user && user.emailVerified) return null;
-
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background p-6 relative">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[100px] pointer-events-none" />
-      <Card className="glass-card w-full max-w-md border-none rounded-[32px] p-8 space-y-8 relative z-10">
+    <div className="flex items-center justify-center min-h-screen bg-background p-6">
+      <Card className="neo-flat w-full max-w-md p-10 space-y-8">
         <CardHeader className="space-y-4 text-center p-0">
           <div className="flex justify-center">
-            <div className="h-16 w-16 bg-primary/20 rounded-2xl flex items-center justify-center border border-primary/20">
-              <ShieldCheck className="h-8 w-8 text-secondary" />
+            <div className="h-20 w-20 neo-flat flex items-center justify-center mb-2">
+              <ShieldCheck className="h-10 w-10 text-primary" />
             </div>
           </div>
           <div>
-            <CardTitle className="text-3xl font-bold tracking-tight uppercase">Welcome Back</CardTitle>
-            <CardDescription className="text-xs font-bold text-muted-foreground tracking-[0.2em] uppercase mt-2">Enter credentials to access hub</CardDescription>
+            <CardTitle className="text-3xl font-bold tracking-tight uppercase text-foreground">Welcome Back</CardTitle>
+            <CardDescription className="text-[10px] font-bold text-muted-foreground tracking-[0.2em] uppercase mt-2">Enter credentials to access hub</CardDescription>
           </div>
         </CardHeader>
-        <form onSubmit={handleLogin} className="space-y-6">
+        <form onSubmit={handleLogin} className="space-y-8">
           <CardContent className="space-y-6 p-0">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Email Address</Label>
+              <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Email Address</Label>
               <Input
-                id="email"
                 type="email"
                 placeholder="name@agency.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="h-14 bg-primary/5 border-primary/10 rounded-2xl text-foreground placeholder:text-muted-foreground/40"
+                className="h-14 neo-inset bg-background text-foreground placeholder:text-muted-foreground/40 px-6"
               />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between ml-1">
-                <Label htmlFor="password" title="Password" className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Password</Label>
-                <Link href="/forgot-password" className="text-[9px] font-bold uppercase tracking-widest text-primary hover:text-secondary transition-colors">
-                  Forgot Password?
+                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Password</Label>
+                <Link href="/forgot-password" title="Forgot Password" className="text-[9px] font-bold uppercase tracking-widest text-primary">
+                  Lost Code?
                 </Link>
               </div>
               <div className="relative">
                 <Input
-                  id="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="h-14 bg-primary/5 border-primary/10 rounded-2xl text-foreground pr-12"
+                  className="h-14 neo-inset bg-background text-foreground pr-14 px-6"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
+                  className="absolute right-5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
                 >
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
           </CardContent>
-          <CardFooter className="flex flex-col space-y-6 p-0">
-            <Button type="submit" className="w-full h-16 rounded-2xl text-sm font-bold uppercase bg-primary hover:bg-secondary tracking-[0.2em] shadow-lg shadow-primary/20 text-white" disabled={loading}>
+          <CardFooter className="flex flex-col space-y-8 p-0">
+            <Button type="submit" className="w-full h-16 neo-btn bg-background text-foreground hover:text-primary text-sm font-bold uppercase tracking-[0.2em]" disabled={loading}>
               {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Sign In"}
             </Button>
             <p className="text-xs text-center text-muted-foreground font-bold uppercase tracking-widest">
               No Account?{" "}
-              <Link href="/signup" className="text-secondary hover:underline">
-                Sign Up
+              <Link href="/signup" className="text-primary hover:underline">
+                Enlist
               </Link>
             </p>
           </CardFooter>
