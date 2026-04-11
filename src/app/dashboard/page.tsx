@@ -162,10 +162,10 @@ export default function DashboardPage() {
   }, [allUsersData, user]);
 
   const radarSearchResults = useMemo(() => {
-    if (!radarSearchTerm || !radarSearchTerm.trim() || radarSearchTerm.trim().length < 3) return [];
+    if (!radarSearchTerm || radarSearchTerm.trim().length < 3) return [];
     const term = radarSearchTerm.toLowerCase().trim();
     return availableNodes.filter(node => {
-      const hId = node.hardwareId ? String(node.hardwareId).toLowerCase() : "";
+      const hId = String(node.hardwareId || "").toLowerCase();
       return hId === term;
     });
   }, [availableNodes, radarSearchTerm]);
@@ -377,7 +377,7 @@ export default function DashboardPage() {
     const nodeData = {
       nodeName,
       hardwareId,
-      status: editingNode?.status || 'online',
+      status: 'online',
       temperature: parseFloat(formData.get('tacticalTemperature') as string) || 24.5,
       targetGroups: selectedGroups
     };
@@ -992,19 +992,19 @@ export default function DashboardPage() {
             <div className="space-y-3">
               <Label className="text-[9px] font-black text-foreground uppercase tracking-widest ml-1">Protocol Assignment</Label>
               <ScrollArea className="h-40 neo-inset p-4 bg-white/20 rounded-[1.5rem]">
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-5 py-2">
                   {groups.length === 0 ? (
                     <p className="text-[8px] text-center text-muted-foreground uppercase py-8 font-black">No protocols defined</p>
                   ) : (
                     groups.map(group => (
-                      <div key={group.id} className="flex items-center space-x-3">
+                      <div key={group.id} className="flex items-center space-x-3 py-1 shrink-0">
                         <Checkbox 
                           id={`buddy-group-${group.id}`} 
                           checked={selectedGroups.includes(group.id)} 
                           onCheckedChange={(checked) => toggleGroupSelection(group.id, !!checked)}
                           className="border-primary/40 h-5 w-5 rounded-sm shrink-0"
                         />
-                        <Label htmlFor={`buddy-group-${group.id}`} className="text-[10px] font-black uppercase text-foreground cursor-pointer select-none leading-none truncate">{group.name}</Label>
+                        <Label htmlFor={`buddy-group-${group.id}`} className="text-[10px] font-black uppercase text-foreground cursor-pointer select-none truncate">{group.name}</Label>
                       </div>
                     ))
                   )}
@@ -1046,19 +1046,19 @@ export default function DashboardPage() {
             <div className="space-y-3">
               <Label className="text-[9px] font-black text-foreground uppercase tracking-widest ml-1">Target Protocols</Label>
               <ScrollArea className="h-40 neo-inset p-4 bg-white/20 rounded-[1.5rem]">
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-5 py-2">
                   {groups.length === 0 ? (
                     <p className="text-[8px] text-center text-muted-foreground uppercase py-8 font-black">No protocols defined</p>
                   ) : (
                     groups.map(group => (
-                      <div key={group.id} className="flex items-center space-x-3">
+                      <div key={group.id} className="flex items-center space-x-3 py-1 shrink-0">
                         <Checkbox 
                           id={`node-group-${group.id}`} 
                           checked={selectedGroups.includes(group.id)} 
                           onCheckedChange={(checked) => toggleGroupSelection(group.id, !!checked)}
                           className="border-primary/40 h-5 w-5 rounded-sm shrink-0"
                         />
-                        <Label htmlFor={`node-group-${group.id}`} className="text-[10px] font-black uppercase text-foreground cursor-pointer select-none leading-none truncate">{group.name}</Label>
+                        <Label htmlFor={`node-group-${group.id}`} className="text-[10px] font-black uppercase text-foreground cursor-pointer select-none truncate">{group.name}</Label>
                       </div>
                     ))
                   )}
@@ -1141,7 +1141,7 @@ export default function DashboardPage() {
             )}
           </div>
           <div className="p-8 pt-4 border-t border-black/5 flex-shrink-0 bg-background/30">
-            <Button onClick={() => setInterceptAlert(null)} className="w-full h-16 neo-btn bg-white text-foreground hover:bg-destructive hover:text-white text-[11px] font-black uppercase tracking-[0.4em] rounded-[1.5rem]">CLOSE COMMAND</Button>
+            <Button onClick={() => setInterceptAlert(null)} className="w-full h-16 neo-btn bg-white text-foreground hover:bg-destructive hover:text-white text-[11px] font-black uppercase tracking-[0.4em] rounded-[1.5rem]">CLOSE</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -1238,3 +1238,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+    
