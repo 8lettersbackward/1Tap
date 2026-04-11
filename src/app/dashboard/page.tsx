@@ -89,7 +89,6 @@ interface Node {
 }
 
 export default function DashboardPage() {
-  // 1. All hooks at the absolute top
   const { user, loading: userLoading } = useUser();
   const { auth } = useFirebase();
   const rtdb = useDatabase();
@@ -151,11 +150,11 @@ export default function DashboardPage() {
     return nodeDiscovery;
   }, [allUsersData, user]);
 
+  // Privacy: Search only by Hardware ID and only if searched
   const radarSearchResults = useMemo(() => {
-    if (!radarSearchTerm) return [];
+    if (!radarSearchTerm || radarSearchTerm.trim().length < 3) return [];
     return availableNodes.filter(node => 
-      node.hardwareId.toLowerCase().includes(radarSearchTerm.toLowerCase()) ||
-      node.nodeName.toLowerCase().includes(radarSearchTerm.toLowerCase())
+      node.hardwareId.toLowerCase() === radarSearchTerm.toLowerCase().trim()
     );
   }, [availableNodes, radarSearchTerm]);
 
@@ -164,7 +163,7 @@ export default function DashboardPage() {
   const navItems = useMemo(() => {
     return userRole === 'guardian' 
       ? [{ id: 'guardian', label: 'RADAR', icon: Radar }, { id: 'linked', label: 'LINKS', icon: Link2 }, { id: 'notifications', label: 'ALERTS', icon: Bell }, { id: 'settings', label: 'PROFILE', icon: Settings }]
-      : [{ id: 'buddies', label: 'BUDDIES', icon: Smartphone }, { id: 'nodes', label: 'NODES', icon: Cpu }, { id: 'linked', label: 'HANDSHAKES', icon: Link2 }, { id: 'notifications', label: 'ALERTS', icon: Bell }, { id: 'settings', label: 'PROFILE', icon: Settings }];
+      : [{ id: 'buddies', label: 'BUDDIES', icon: Smartphone }, { id: 'nodes', label: 'NODES', icon: Cpu }, { id: 'linked', label: 'LINKED', icon: Link2 }, { id: 'notifications', label: 'ALERTS', icon: Bell }, { id: 'settings', label: 'PROFILE', icon: Settings }];
   }, [userRole]);
 
   useEffect(() => {
@@ -272,6 +271,7 @@ export default function DashboardPage() {
 
     if (editingBuddy) {
       setIsBuddyDialogOpen(false);
+      // Timeout prevents Radix UI focus-lock freeze
       setTimeout(() => {
         setPendingUpdate({ type: 'buddy', data: buddyData });
       }, 300);
@@ -300,6 +300,7 @@ export default function DashboardPage() {
 
     if (editingNode) {
       setIsNodeDialogOpen(false);
+      // Timeout prevents Radix UI focus-lock freeze
       setTimeout(() => {
         setPendingUpdate({ type: 'node', data: nodeData });
       }, 300);
@@ -407,7 +408,7 @@ export default function DashboardPage() {
             {notifications.length > 0 && item.id === 'notifications' && (
               <span className="absolute top-0 right-1 h-1.5 w-1.5 bg-primary rounded-full" />
             )}
-            {links.filter(l => l.status === 'pending').length > 0 && item.id === 'linked' && (
+            {links.filter(l => l.status === 'pending').length > 0 && (item.id === 'linked' || item.id === 'guardian') && (
               <span className="absolute top-0 right-1 h-1.5 w-1.5 bg-destructive rounded-full animate-pulse" />
             )}
           </button>
@@ -439,7 +440,7 @@ export default function DashboardPage() {
                 {notifications.length > 0 && item.id === 'notifications' && (
                   <span className="absolute top-1/2 -translate-y-1/2 right-6 h-1.5 w-1.5 bg-primary rounded-full" />
                 )}
-                {links.filter(l => l.status === 'pending').length > 0 && item.id === 'linked' && (
+                {links.filter(l => l.status === 'pending').length > 0 && (item.id === 'linked' || item.id === 'guardian') && (
                   <span className="absolute top-1/2 -translate-y-1/2 right-6 h-1.5 w-1.5 bg-destructive rounded-full animate-pulse" />
                 )}
               </button>
@@ -605,39 +606,48 @@ export default function DashboardPage() {
 
           {activeTab === 'linked' && (
             <div className="space-y-8">
-              <h2 className="text-xl md:text-2xl font-black tracking-tight uppercase text-foreground">Handshake Protocols</h2>
+              <h2 className="text-xl md:text-2xl font-black tracking-tight uppercase text-foreground">LINKED Authorization</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {links.length === 0 ? (
                   <div className="col-span-full neo-flat p-12 text-center opacity-30 flex flex-col items-center">
                     <Link2 className="h-12 w-12 mb-6 text-foreground" />
-                    <p className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground">No Active Handshakes</p>
+                    <p className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground">No Pending Authorization Signals</p>
                   </div>
                 ) : (
                   <>
-                    {/* Incoming Requests for User */}
-                    {userRole !== 'guardian' && links.filter(l => l.status === 'pending').map(link => (
-                      <div key={link.id} className="neo-flat p-6 space-y-4 bg-primary/5">
+                    {/* Incoming Handshake Requests for Users */}
+                    {userRole !== 'guardian' && links.map(link => (
+                      <div key={link.id} className={cn("neo-flat p-6 space-y-4", link.status === 'pending' ? "bg-primary/5" : "bg-white")}>
                         <div className="flex justify-between items-start">
                           <div className="flex gap-4 items-center">
                             <Avatar className="h-10 w-10 neo-inset border border-black/5">
                               <AvatarFallback className="bg-transparent text-[10px] font-black text-foreground">{link.guardianEmail?.[0].toUpperCase() || 'G'}</AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className="text-[10px] font-black uppercase tracking-widest text-foreground">Guardian Request</p>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-foreground">{link.status === 'pending' ? "Incoming Handshake" : "Authorized Guardian"}</p>
                               <p className="text-[8px] font-black text-muted-foreground mt-1 uppercase tracking-widest truncate max-w-[120px]">{link.guardianEmail}</p>
                             </div>
                           </div>
-                          <Badge className="bg-destructive/10 text-destructive text-[7px] font-black border-none px-2 py-0.5 rounded-sm uppercase animate-pulse">Pending</Badge>
+                          <Badge className={cn("text-[7px] font-black px-2 py-0.5 rounded-sm uppercase", link.status === 'linked' ? "bg-green-500/10 text-green-600" : "bg-primary/10 text-primary animate-pulse")}>
+                            {link.status === 'linked' ? "Linked" : "Pending"}
+                          </Badge>
                         </div>
-                        <div className="neo-inset p-3 bg-white/30 border border-black/5 text-[9px] font-black uppercase text-foreground">Asset: {link.hardwareId}</div>
-                        <div className="flex gap-3">
-                          <Button onClick={() => handleAcceptLink(link.id)} className="flex-1 h-10 neo-btn bg-primary text-white text-[9px] font-black uppercase"><ShieldCheck className="h-3.5 w-3.5 mr-2" /> ACCEPT</Button>
-                          <Button onClick={() => handleRejectLink(link.id)} className="flex-1 h-10 neo-btn bg-background text-destructive text-[9px] font-black uppercase"><ShieldX className="h-3.5 w-3.5 mr-2" /> REJECT</Button>
-                        </div>
+                        <div className="neo-inset p-3 bg-white/30 border border-black/5 text-[9px] font-black uppercase text-foreground">Asset ID: {link.hardwareId}</div>
+                        
+                        {link.status === 'pending' ? (
+                          <div className="flex gap-3">
+                            <Button onClick={() => handleAcceptLink(link.id)} className="flex-1 h-10 neo-btn bg-primary text-white text-[9px] font-black uppercase shadow-lg shadow-primary/20"><ShieldCheck className="h-3.5 w-3.5 mr-2" /> ACCEPT</Button>
+                            <Button onClick={() => handleRejectLink(link.id)} className="flex-1 h-10 neo-btn bg-background text-destructive text-[9px] font-black uppercase"><ShieldX className="h-3.5 w-3.5 mr-2" /> REJECT</Button>
+                          </div>
+                        ) : (
+                          <Button onClick={() => handleRejectLink(link.id)} variant="ghost" className="w-full h-10 neo-btn bg-background text-destructive text-[9px] font-black uppercase tracking-widest">
+                            <ShieldX className="h-3.5 w-3.5 mr-2" /> REVOKE ACCESS
+                          </Button>
+                        )}
                       </div>
                     ))}
 
-                    {/* Outgoing Requests for Guardian */}
+                    {/* Outgoing Requests for Guardians */}
                     {userRole === 'guardian' && links.map(link => (
                       <div key={link.id} className="neo-flat p-6 space-y-4">
                         <div className="flex justify-between items-start">
@@ -654,28 +664,8 @@ export default function DashboardPage() {
                             {link.status}
                           </Badge>
                         </div>
-                        <div className="neo-inset p-3 bg-white/20 border border-black/5 text-[9px] font-black uppercase text-foreground">Asset ID: {link.hardwareId}</div>
+                        <div className="neo-inset p-3 bg-white/20 border border-black/5 text-[9px] font-black uppercase text-foreground">Asset Fix: {link.hardwareId}</div>
                         <Button onClick={() => handleRejectLink(link.id)} variant="ghost" className="w-full h-8 text-[8px] font-black uppercase text-muted-foreground hover:text-destructive"><Trash2 className="h-3 w-3 mr-2" /> TERMINATE</Button>
-                      </div>
-                    ))}
-
-                    {/* Linked for User */}
-                    {userRole !== 'guardian' && links.filter(l => l.status === 'linked').map(link => (
-                      <div key={link.id} className="neo-flat p-6 space-y-4">
-                        <div className="flex justify-between items-start">
-                          <div className="flex gap-4 items-center">
-                            <Avatar className="h-10 w-10 neo-inset border border-black/5">
-                              <AvatarFallback className="bg-transparent text-[10px] font-black text-foreground">{link.guardianEmail?.[0].toUpperCase() || 'G'}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="text-[10px] font-black uppercase tracking-widest text-foreground">Authorized Guardian</p>
-                              <p className="text-[8px] font-black text-muted-foreground mt-1 uppercase tracking-widest truncate max-w-[120px]">{link.guardianEmail}</p>
-                            </div>
-                          </div>
-                          <Badge className="bg-green-500/10 text-green-600 text-[7px] font-black px-2 py-0.5 rounded-sm uppercase">Linked</Badge>
-                        </div>
-                        <div className="neo-inset p-3 bg-white/20 border border-black/5 text-[9px] font-black uppercase text-foreground">Asset: {link.hardwareId}</div>
-                        <Button onClick={() => handleRejectLink(link.id)} variant="ghost" className="w-full h-8 text-[8px] font-black uppercase text-muted-foreground hover:text-destructive"><ShieldX className="h-3 w-3 mr-2" /> REVOKE ACCESS</Button>
                       </div>
                     ))}
                   </>
@@ -745,15 +735,15 @@ export default function DashboardPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {!radarSearchTerm ? (
+                {!radarSearchTerm || radarSearchTerm.trim().length < 3 ? (
                   <div className="col-span-full neo-flat p-12 text-center opacity-30 flex flex-col items-center">
                     <Radar className="h-12 w-12 mb-6 text-foreground" />
-                    <p className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground">Enter Hardware ID to Scan</p>
+                    <p className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground">Enter Precise Hardware ID to Scan</p>
                   </div>
                 ) : radarSearchResults.length === 0 ? (
                   <div className="col-span-full neo-flat p-12 text-center opacity-30 flex flex-col items-center">
                     <ShieldX className="h-12 w-12 mb-6 text-destructive/60" />
-                    <p className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground">No Asset Signature Detected</p>
+                    <p className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground">No Asset Signature Detected for this ID</p>
                   </div>
                 ) : (
                   radarSearchResults.map(node => {
@@ -781,7 +771,7 @@ export default function DashboardPage() {
                             </p>
                           </div>
                         ) : (
-                          <Button onClick={() => handleRequestLink(node.ownerUid!, node.hardwareId)} className="w-full h-10 neo-btn bg-background text-foreground hover:text-primary text-[9px] font-black uppercase tracking-widest">
+                          <Button onClick={() => handleRequestLink(node.ownerUid!, node.hardwareId)} className="w-full h-10 neo-btn bg-background text-foreground hover:text-primary text-[9px] font-black uppercase tracking-widest shadow-sm">
                             <UserPlus className="h-3.5 w-3.5 mr-2" /> REQUEST HANDSHAKE
                           </Button>
                         )}
