@@ -956,21 +956,23 @@ export default function DashboardPage() {
             <div className="space-y-3">
               <Label className="text-[9px] font-black text-foreground uppercase tracking-widest ml-1">Protocol Assignment</Label>
               <ScrollArea className="h-40 neo-inset p-4 bg-white/20 rounded-[1.5rem]">
-                {groups.length === 0 ? (
-                  <p className="text-[8px] text-center text-muted-foreground uppercase py-8 font-black">No protocols defined</p>
-                ) : (
-                  groups.map(group => (
-                    <div key={group.id} className="flex items-center space-x-3 mb-4 last:mb-0">
-                      <Checkbox 
-                        id={`buddy-group-${group.id}`} 
-                        checked={selectedGroups.includes(group.id)} 
-                        onCheckedChange={(checked) => toggleGroupSelection(group.id, !!checked)}
-                        className="border-primary/40 h-5 w-5 rounded-sm"
-                      />
-                      <Label htmlFor={`buddy-group-${group.id}`} className="text-[10px] font-black uppercase text-foreground cursor-pointer select-none leading-none pt-0.5">{group.name}</Label>
-                    </div>
-                  ))
-                )}
+                <div className="flex flex-col gap-4">
+                  {groups.length === 0 ? (
+                    <p className="text-[8px] text-center text-muted-foreground uppercase py-8 font-black">No protocols defined</p>
+                  ) : (
+                    groups.map(group => (
+                      <div key={group.id} className="flex items-center space-x-3">
+                        <Checkbox 
+                          id={`buddy-group-${group.id}`} 
+                          checked={selectedGroups.includes(group.id)} 
+                          onCheckedChange={(checked) => toggleGroupSelection(group.id, !!checked)}
+                          className="border-primary/40 h-5 w-5 rounded-sm shrink-0"
+                        />
+                        <Label htmlFor={`buddy-group-${group.id}`} className="text-[10px] font-black uppercase text-foreground cursor-pointer select-none leading-none truncate">{group.name}</Label>
+                      </div>
+                    ))
+                  )}
+                </div>
               </ScrollArea>
             </div>
 
@@ -1008,21 +1010,23 @@ export default function DashboardPage() {
             <div className="space-y-3">
               <Label className="text-[9px] font-black text-foreground uppercase tracking-widest ml-1">Target Protocols</Label>
               <ScrollArea className="h-40 neo-inset p-4 bg-white/20 rounded-[1.5rem]">
-                {groups.length === 0 ? (
-                  <p className="text-[8px] text-center text-muted-foreground uppercase py-8 font-black">No protocols defined</p>
-                ) : (
-                  groups.map(group => (
-                    <div key={group.id} className="flex items-center space-x-3 mb-4 last:mb-0">
-                      <Checkbox 
-                        id={`node-group-${group.id}`} 
-                        checked={selectedGroups.includes(group.id)} 
-                        onCheckedChange={(checked) => toggleGroupSelection(group.id, !!checked)}
-                        className="border-primary/40 h-5 w-5 rounded-sm"
-                      />
-                      <Label htmlFor={`node-group-${group.id}`} className="text-[10px] font-black uppercase text-foreground cursor-pointer select-none leading-none pt-0.5">{group.name}</Label>
-                    </div>
-                  ))
-                )}
+                <div className="flex flex-col gap-4">
+                  {groups.length === 0 ? (
+                    <p className="text-[8px] text-center text-muted-foreground uppercase py-8 font-black">No protocols defined</p>
+                  ) : (
+                    groups.map(group => (
+                      <div key={group.id} className="flex items-center space-x-3">
+                        <Checkbox 
+                          id={`node-group-${group.id}`} 
+                          checked={selectedGroups.includes(group.id)} 
+                          onCheckedChange={(checked) => toggleGroupSelection(group.id, !!checked)}
+                          className="border-primary/40 h-5 w-5 rounded-sm shrink-0"
+                        />
+                        <Label htmlFor={`node-group-${group.id}`} className="text-[10px] font-black uppercase text-foreground cursor-pointer select-none leading-none truncate">{group.name}</Label>
+                      </div>
+                    ))
+                  )}
+                </div>
               </ScrollArea>
             </div>
 
@@ -1053,14 +1057,16 @@ export default function DashboardPage() {
             <div className="space-y-4">
               <Label className="text-[9px] font-black text-foreground uppercase tracking-widest ml-1">Active Groups</Label>
               <ScrollArea className="h-48 pr-4">
-                {groups.length === 0 ? <p className="text-[9px] text-center text-muted-foreground py-8 uppercase font-black">No Groups Defined</p> : groups.map(group => (
-                  <div key={group.id} className="flex justify-between items-center neo-inset p-4 mb-3 border border-black/5 bg-white/30 shadow-inner rounded-[1.5rem]">
-                    <span className="text-[10px] font-black uppercase text-foreground">{group.name}</span>
-                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10 rounded-full" onClick={() => setDeleteConfirm({ id: group.id, type: 'group', name: group.name })}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
+                <div className="flex flex-col gap-3">
+                  {groups.length === 0 ? <p className="text-[9px] text-center text-muted-foreground py-8 uppercase font-black">No Groups Defined</p> : groups.map(group => (
+                    <div key={group.id} className="flex justify-between items-center neo-inset p-4 border border-black/5 bg-white/30 shadow-inner rounded-[1.5rem]">
+                      <span className="text-[10px] font-black uppercase text-foreground truncate mr-2">{group.name}</span>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10 rounded-full shrink-0" onClick={() => setDeleteConfirm({ id: group.id, type: 'group', name: group.name })}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               </ScrollArea>
             </div>
           </div>
