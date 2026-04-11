@@ -85,6 +85,7 @@ interface Node {
   id: string;
   nodeName: string;
   hardwareId: string;
+  phoneNumber?: string;
   status: 'online' | 'offline' | 'error';
   temperature?: number;
   targetGroups?: string[];
@@ -106,6 +107,7 @@ export default function DashboardPage() {
   const [hasMounted, setHasMounted] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [radarSearchTerm, setRadarSearchTerm] = useState("");
+  const [hasNewAlerts, setHasNewAlerts] = useState(false);
 
   const [isBuddyDialogOpen, setIsBuddyDialogOpen] = useState(false);
   const [isNodeDialogOpen, setIsNodeDialogOpen] = useState(false);
@@ -204,6 +206,11 @@ export default function DashboardPage() {
         const val = snapshot.val();
         const now = Date.now();
         const timestamp = val.timestamp || val.createdAt || 0;
+        
+        if (activeTab !== 'notifications') {
+          setHasNewAlerts(true);
+        }
+
         if (val.type === 'sos' && val.trigger !== 'TrackResponse' && (now - timestamp < 45000)) {
           setInterceptAlert({ ...val, id: snapshot.key });
         }
@@ -211,6 +218,12 @@ export default function DashboardPage() {
       return () => off(notifRef, 'child_added', listener);
     }
   }, [user, userLoading, router, rtdb, activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'notifications') {
+      setHasNewAlerts(false);
+    }
+  }, [activeTab]);
 
   const logOutTerminal = useCallback(() => signOut(auth).then(() => router.push("/login")), [auth, router]);
 
@@ -377,6 +390,7 @@ export default function DashboardPage() {
     const nodeData = {
       nodeName,
       hardwareId,
+      phoneNumber: formData.get('nodePhoneNumber') as string,
       status: 'online',
       temperature: parseFloat(formData.get('tacticalTemperature') as string) || 24.5,
       targetGroups: selectedGroups
@@ -496,8 +510,8 @@ export default function DashboardPage() {
           >
             <item.icon className={cn("h-5 w-5", activeTab === item.id ? "text-primary" : "text-muted-foreground")} />
             <span className="text-foreground font-black">{item.label}</span>
-            {notifications.length > 0 && item.id === 'notifications' && (
-              <span className="absolute top-0 right-1 h-1.5 w-1.5 bg-primary rounded-full" />
+            {hasNewAlerts && item.id === 'notifications' && (
+              <span className="absolute top-0 right-1 h-1.5 w-1.5 bg-primary rounded-full animate-pulse" />
             )}
             {(links.some(l => l.status === 'pending' || l.trackingRequest === 'requested')) && (item.id === 'linked' || item.id === 'guardian') && (
               <span className="absolute top-0 right-1 h-1.5 w-1.5 bg-destructive rounded-full animate-pulse" />
@@ -528,8 +542,8 @@ export default function DashboardPage() {
               >
                 <item.icon className={cn("h-4 w-4", activeTab === item.id ? "text-primary" : "text-muted-foreground")} />
                 <span className="text-foreground">{item.label}</span>
-                {notifications.length > 0 && item.id === 'notifications' && (
-                  <span className="absolute top-1/2 -translate-y-1/2 right-6 h-1.5 w-1.5 bg-primary rounded-full" />
+                {hasNewAlerts && item.id === 'notifications' && (
+                  <span className="absolute top-1/2 -translate-y-1/2 right-6 h-1.5 w-1.5 bg-primary rounded-full animate-pulse" />
                 )}
                 {(links.some(l => l.status === 'pending' || l.trackingRequest === 'requested')) && (item.id === 'linked' || item.id === 'guardian') && (
                   <span className="absolute top-1/2 -translate-y-1/2 right-6 h-1.5 w-1.5 bg-destructive rounded-full animate-pulse" />
@@ -1073,6 +1087,22 @@ export default function DashboardPage() {
               <Input name="hardwareId" defaultValue={editingNode?.hardwareId} required className="h-12 neo-inset bg-background text-foreground border-none px-5 font-black uppercase text-[10px]" />
             </div>
             <div className="space-y-2">
+              <Label className="text-[9px] font-black text-foreground uppercase tracking-widest ml-1">Node Contact Signal</Label>
+              <Input 
+                name="nodePhoneNumber" 
+                type="tel"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                onKeyPress={(e) => {
+                  if (!/[0-9]/.test(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                defaultValue={editingNode?.phoneNumber} 
+                className="h-12 neo-inset bg-background text-foreground border-none px-5 font-black uppercase text-[10px]" 
+              />
+            </div>
+            <div className="space-y-2">
               <Label className="text-[9px] font-black text-foreground uppercase tracking-widest ml-1">Calibration Temperature (°C)</Label>
               <Input name="tacticalTemperature" type="number" step="0.1" defaultValue={editingNode?.temperature || 24.5} required className="h-12 neo-inset bg-background text-foreground border-none px-5 font-black uppercase text-[10px]" />
             </div>
@@ -1237,6 +1267,11 @@ export default function DashboardPage() {
               <div>
                 <p className="text-xl font-black uppercase tracking-widest text-foreground">{viewingNode?.nodeName}</p>
                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">ID: {viewingNode?.hardwareId}</p>
+                {viewingNode?.phoneNumber && (
+                  <p className="text-[9px] font-black text-primary uppercase tracking-[0.2em] mt-1 flex items-center justify-center gap-2">
+                    <Phone className="h-3 w-3" /> {viewingNode.phoneNumber}
+                  </p>
+                )}
               </div>
               <Badge className={cn("text-[8px] font-black px-4 py-1.5 uppercase rounded-full border border-black/5", viewingNode?.status === 'online' ? "bg-green-500/10 text-green-600" : "bg-muted text-muted-foreground")}>
                 <Circle className={cn("h-1.5 w-1.5 mr-2 fill-current", viewingNode?.status === 'online' ? "animate-pulse" : "opacity-30")} />
