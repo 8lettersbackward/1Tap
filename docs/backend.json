@@ -35,8 +35,7 @@
         "status": { "type": "string", "enum": ["online", "offline", "error"] },
         "temperature": { "type": "number" },
         "targetGroups": { "type": "array", "items": { "type": "string" } },
-        "registeredAt": { "type": "number" },
-        "place": { "type": "string" }
+        "registeredAt": { "type": "number" }
       },
       "required": ["nodeName", "hardwareId", "status"]
     },

@@ -67,7 +67,6 @@ interface Node {
   hardwareId: string;
   status: 'online' | 'offline' | 'error';
   temperature?: number;
-  place?: string;
   targetGroups?: string[];
 }
 
@@ -187,7 +186,6 @@ export default function DashboardPage() {
       hardwareId: formData.get('hardwareId') as string,
       status: 'offline',
       temperature: 24.5,
-      place: formData.get('place') as string || 'Unknown Sector'
     };
 
     try {
@@ -420,14 +418,10 @@ export default function DashboardPage() {
                         </Badge>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 gap-4">
                         <div className="neo-inset p-3 space-y-1 text-center border border-black/5">
                           <Thermometer className="h-3 w-3 mx-auto text-orange-500/60" />
                           <p className="text-[8px] font-black text-foreground">{node.temperature || '--'}°C</p>
-                        </div>
-                        <div className="neo-inset p-3 space-y-1 text-center border border-black/5">
-                          <MapPin className="h-3 w-3 mx-auto text-primary/60" />
-                          <p className="text-[8px] font-black text-foreground truncate">{node.place || 'Unknown'}</p>
                         </div>
                       </div>
 
@@ -633,10 +627,6 @@ export default function DashboardPage() {
             <div className="space-y-2">
               <Label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Hardware ID Signature</Label>
               <Input name="hardwareId" defaultValue={editingNode?.hardwareId} required className="h-12 neo-inset bg-background text-foreground border-none px-5" />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Deployment Sector (Place)</Label>
-              <Input name="place" defaultValue={editingNode?.place} placeholder="e.g. Master Bedroom" className="h-12 neo-inset bg-background text-foreground border-none px-5" />
             </div>
             <DialogFooter className="pt-4">
               <Button type="submit" className="w-full h-14 neo-btn bg-background text-foreground hover:text-primary text-[10px] font-bold uppercase tracking-[0.2em] transition-all">

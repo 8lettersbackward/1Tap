@@ -1,3 +1,4 @@
+
 # 1TAP | Emergency Buddy - Technical Specification & Operational Blueprint
 
 ## 1. System Architecture Overview
