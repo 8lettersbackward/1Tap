@@ -15,6 +15,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   Settings, 
   Bell, 
@@ -27,7 +37,6 @@ import {
   Eye,
   Thermometer,
   Pencil,
-  MapPin,
   AlertTriangle,
   Radar,
   ShieldAlert,
@@ -40,7 +49,7 @@ import {
   Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ref, set, push, remove, update, onChildAdded, off, get } from "firebase/database";
+import { ref, push, remove, update, onChildAdded, off, get } from "firebase/database";
 import { signOut } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -89,10 +98,14 @@ export default function DashboardPage() {
   const [editingBuddy, setEditingBuddy] = useState<Buddy | null>(null);
   const [editingNode, setEditingNode] = useState<Node | null>(null);
   
+  // Confirmation States
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string, type: 'buddy' | 'node' | 'group', name: string } | null>(null);
+  const [pendingUpdate, setPendingUpdate] = useState<{ type: 'buddy' | 'node', data: any } | null>(null);
+
   // SOS Intercept States
   const [interceptAlert, setInterceptAlert] = useState<any>(null);
 
-  // Memoized Hooks at Top Level
+  // Hooks
   const buddiesRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/buddies`) : null, [rtdb, user]);
   const nodesRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/nodes`) : null, [rtdb, user]);
   const groupsRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/buddyGroups`) : null, [rtdb, user]);
@@ -135,19 +148,15 @@ export default function DashboardPage() {
         setActiveTab(role === 'guardian' ? 'guardian' : 'buddies');
       });
 
-      // Global SOS Listener
       const notifRef = ref(rtdb, `users/${user.uid}/notifications`);
       const listener = onChildAdded(notifRef, (snapshot) => {
         const val = snapshot.val();
         const now = Date.now();
         const timestamp = val.timestamp || val.createdAt || 0;
-        
-        // Intercept fresh SOS signals that aren't legacy track responses
         if (val.type === 'sos' && val.trigger !== 'TrackResponse' && (now - timestamp < 45000)) {
           setInterceptAlert({ ...val, id: snapshot.key });
         }
       });
-
       return () => off(notifRef, 'child_added', listener);
     }
   }, [user, userLoading, router, rtdb]);
@@ -164,18 +173,16 @@ export default function DashboardPage() {
       groups: [] as string[]
     };
 
-    try {
-      if (editingBuddy) {
-        await update(ref(rtdb, `users/${user.uid}/buddies/${editingBuddy.id}`), buddyData);
-        toast({ title: "Personnel Updated", description: "Identity signature synchronized." });
-      } else {
+    if (editingBuddy) {
+      setPendingUpdate({ type: 'buddy', data: buddyData });
+    } else {
+      try {
         await push(ref(rtdb, `users/${user.uid}/buddies`), buddyData);
         toast({ title: "Personnel Enlisted", description: "New buddy added to vault." });
+        setIsBuddyDialogOpen(false);
+      } catch (err: any) {
+        toast({ variant: "destructive", title: "Vault Error", description: err.message });
       }
-      setIsBuddyDialogOpen(false);
-      setEditingBuddy(null);
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "Vault Error", description: err.message });
     }
   };
 
@@ -190,32 +197,37 @@ export default function DashboardPage() {
       temperature: 24.5,
     };
 
-    try {
-      if (editingNode) {
-        await update(ref(rtdb, `users/${user.uid}/nodes/${editingNode.id}`), nodeData);
-        toast({ title: "Node Updated", description: "Hardware configuration synchronized." });
-      } else {
+    if (editingNode) {
+      setPendingUpdate({ type: 'node', data: nodeData });
+    } else {
+      try {
         await push(ref(rtdb, `users/${user.uid}/nodes`), nodeData);
         toast({ title: "Node Armed", description: "New hardware asset registered." });
+        setIsNodeDialogOpen(false);
+      } catch (err: any) {
+        toast({ variant: "destructive", title: "Hardware Error", description: err.message });
       }
-      setIsNodeDialogOpen(false);
-      setEditingNode(null);
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "Hardware Error", description: err.message });
     }
   };
 
-  const handleAddGroup = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!user || !rtdb) return;
-    const formData = new FormData(e.currentTarget);
-    const name = formData.get('groupName') as string;
+  const executeUpdate = async () => {
+    if (!user || !rtdb || !pendingUpdate) return;
     try {
-      await push(ref(rtdb, `users/${user.uid}/buddyGroups`), { name });
-      toast({ title: "Protocol Created", description: `Security group '${name}' initialized.` });
-      (e.target as HTMLFormElement).reset();
+      if (pendingUpdate.type === 'buddy' && editingBuddy) {
+        await update(ref(rtdb, `users/${user.uid}/buddies/${editingBuddy.id}`), pendingUpdate.data);
+        toast({ title: "Personnel Updated", description: "Identity signature synchronized." });
+        setIsBuddyDialogOpen(false);
+        setEditingBuddy(null);
+      } else if (pendingUpdate.type === 'node' && editingNode) {
+        await update(ref(rtdb, `users/${user.uid}/nodes/${editingNode.id}`), pendingUpdate.data);
+        toast({ title: "Node Updated", description: "Hardware configuration synchronized." });
+        setIsNodeDialogOpen(false);
+        setEditingNode(null);
+      }
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Protocol Error", description: err.message });
+      toast({ variant: "destructive", title: "Sync Error", description: err.message });
+    } finally {
+      setPendingUpdate(null);
     }
   };
 
@@ -248,6 +260,20 @@ export default function DashboardPage() {
     }
   };
 
+  const handleAddGroup = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!user || !rtdb) return;
+    const formData = new FormData(e.currentTarget);
+    const name = formData.get('groupName') as string;
+    try {
+      await push(ref(rtdb, `users/${user.uid}/buddyGroups`), { name });
+      toast({ title: "Protocol Created", description: `Security group '${name}' initialized.` });
+      (e.target as HTMLFormElement).reset();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Protocol Error", description: err.message });
+    }
+  };
+
   if (userLoading || !hasMounted) return <div className="flex items-center justify-center min-h-screen bg-background"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
 
   return (
@@ -260,9 +286,7 @@ export default function DashboardPage() {
             onClick={() => setActiveTab(item.id as TabType)}
             className={cn(
               "flex flex-col items-center gap-1 transition-all text-[8px] font-bold uppercase tracking-widest relative px-2",
-              activeTab === item.id 
-                ? "text-primary scale-110" 
-                : "text-muted-foreground"
+              activeTab === item.id ? "text-primary scale-110" : "text-muted-foreground"
             )}
           >
             <item.icon className={cn("h-5 w-5", activeTab === item.id ? "text-primary" : "text-muted-foreground")} />
@@ -285,7 +309,6 @@ export default function DashboardPage() {
               1TAP <span className="text-primary">BUDDY</span>
             </h1>
           </div>
-
           <nav className="flex flex-col gap-3">
             {navItems.map((item) => (
               <button
@@ -293,9 +316,7 @@ export default function DashboardPage() {
                 onClick={() => setActiveTab(item.id as TabType)}
                 className={cn(
                   "flex items-center gap-4 px-5 py-4 transition-all text-[10px] font-bold uppercase tracking-[0.1em] relative group whitespace-nowrap",
-                  activeTab === item.id 
-                    ? "neo-inset text-primary" 
-                    : "text-muted-foreground hover:text-foreground"
+                  activeTab === item.id ? "neo-inset text-primary" : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 <item.icon className={cn("h-4 w-4", activeTab === item.id ? "text-primary" : "text-muted-foreground")} />
@@ -307,7 +328,6 @@ export default function DashboardPage() {
             ))}
           </nav>
         </div>
-
         <div className="mt-auto">
           <div className="p-5 neo-flat space-y-4">
             <div className="flex items-center gap-3">
@@ -319,12 +339,8 @@ export default function DashboardPage() {
                 <p className="text-[8px] font-bold text-primary uppercase tracking-widest">{userRole}</p>
               </div>
             </div>
-            <button 
-              onClick={logOutTerminal}
-              className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-destructive transition-colors pl-1"
-            >
-              <LogOut className="h-3 w-3" />
-              DISCONNECT
+            <button onClick={logOutTerminal} className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-destructive transition-colors pl-1">
+              <LogOut className="h-3 w-3" /> DISCONNECT
             </button>
           </div>
         </div>
@@ -346,7 +362,6 @@ export default function DashboardPage() {
                   </Button>
                 </div>
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {buddies.length === 0 ? (
                   <div className="col-span-full neo-flat p-12 text-center opacity-30 flex flex-col items-center">
@@ -372,7 +387,7 @@ export default function DashboardPage() {
                         <Button size="icon" variant="ghost" className="h-8 w-8 neo-btn text-muted-foreground hover:text-primary" onClick={() => { setEditingBuddy(buddy); setIsBuddyDialogOpen(true); }}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-8 w-8 neo-btn text-muted-foreground hover:text-destructive" onClick={() => deleteBuddy(buddy.id)}>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 neo-btn text-muted-foreground hover:text-destructive" onClick={() => setDeleteConfirm({ id: buddy.id, type: 'buddy', name: buddy.name })}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                         <Button size="icon" variant="ghost" className="h-8 w-8 neo-btn text-primary hover:text-foreground ml-auto shadow-inner bg-primary/5">
@@ -394,7 +409,6 @@ export default function DashboardPage() {
                   <Cpu className="h-4 w-4 mr-2 text-primary" /> ARM NODE
                 </Button>
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {nodes.length === 0 ? (
                   <div className="col-span-full neo-flat p-12 text-center opacity-30 flex flex-col items-center">
@@ -419,19 +433,15 @@ export default function DashboardPage() {
                           {node.status}
                         </Badge>
                       </div>
-
-                      <div className="grid grid-cols-1 gap-4">
-                        <div className="neo-inset p-3 space-y-1 text-center border border-black/5">
-                          <Thermometer className="h-3 w-3 mx-auto text-orange-500/60" />
-                          <p className="text-[8px] font-black text-foreground">{node.temperature || '--'}°C</p>
-                        </div>
+                      <div className="neo-inset p-3 space-y-1 text-center border border-black/5">
+                        <Thermometer className="h-3 w-3 mx-auto text-orange-500/60" />
+                        <p className="text-[8px] font-black text-foreground">{node.temperature || '--'}°C</p>
                       </div>
-
                       <div className="flex gap-2 pt-2">
                         <Button size="icon" variant="ghost" className="h-8 w-8 neo-btn text-muted-foreground hover:text-primary" onClick={() => { setEditingNode(node); setIsNodeDialogOpen(true); }}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-8 w-8 neo-btn text-muted-foreground hover:text-destructive" onClick={() => deleteNode(node.id)}>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 neo-btn text-muted-foreground hover:text-destructive" onClick={() => setDeleteConfirm({ id: node.id, type: 'node', name: node.nodeName })}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                         <Button size="icon" variant="ghost" className="h-8 w-8 neo-btn text-green-500 hover:text-foreground ml-auto bg-green-500/5 shadow-inner">
@@ -476,21 +486,9 @@ export default function DashboardPage() {
                               </div>
                             </div>
                           </div>
-                          <div className="flex gap-2 w-full sm:w-auto">
-                            <Button 
-                              size="sm" 
-                              className="neo-btn flex-1 sm:flex-none h-8 px-4 text-[8px] font-bold uppercase tracking-widest bg-background text-foreground hover:text-primary"
-                              onClick={() => {
-                                if (n.latitude !== undefined && n.longitude !== undefined) {
-                                  setInterceptAlert({ ...n, id: n.id });
-                                } else {
-                                  toast({ variant: "destructive", title: "Coordinates Unavailable", description: "This alert contains no spatial positioning data." });
-                                }
-                              }}
-                            >
-                              <Eye className="h-3.5 w-3.5 mr-2 text-primary/60" /> TACTICAL MAP
-                            </Button>
-                          </div>
+                          <Button size="sm" className="neo-btn w-full sm:w-auto h-8 px-4 text-[8px] font-bold uppercase tracking-widest bg-background text-foreground hover:text-primary" onClick={() => n.latitude !== undefined && n.longitude !== undefined ? setInterceptAlert({ ...n, id: n.id }) : toast({ variant: "destructive", title: "Coordinates Unavailable", description: "No spatial data." })}>
+                            <Eye className="h-3.5 w-3.5 mr-2 text-primary/60" /> TACTICAL MAP
+                          </Button>
                         </div>
                       </div>
                     ))
@@ -508,12 +506,9 @@ export default function DashboardPage() {
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Scan for Hardware Asset</Label>
                   <div className="flex gap-3">
                     <Input placeholder="ENTER HARDWARE ID SIGNATURE" className="h-12 neo-inset bg-background text-foreground border-none px-5 text-[10px] font-bold uppercase tracking-widest flex-1" />
-                    <Button className="h-12 w-12 neo-btn bg-background text-primary">
-                      <Search className="h-5 w-5" />
-                    </Button>
+                    <Button className="h-12 w-12 neo-btn bg-background text-primary"><Search className="h-5 w-5" /></Button>
                   </div>
                 </div>
-                
                 <div className="p-12 text-center opacity-30 flex flex-col items-center">
                   <Radar className="h-12 w-12 mb-6 text-foreground" />
                   <p className="text-[9px] font-bold uppercase tracking-[0.4em] text-foreground">No Linked Assets Tracked</p>
@@ -526,9 +521,7 @@ export default function DashboardPage() {
             <div className="space-y-8">
                <h2 className="text-xl md:text-2xl font-black tracking-tight uppercase text-foreground">Personnel Profile</h2>
                <div className="neo-flat p-12 flex flex-col items-center gap-8">
-                  <div className="h-32 w-32 neo-inset flex items-center justify-center text-4xl font-black text-primary border-2 border-primary/5">
-                    {currentName[0].toUpperCase()}
-                  </div>
+                  <div className="h-32 w-32 neo-inset flex items-center justify-center text-4xl font-black text-primary border-2 border-primary/5">{currentName[0].toUpperCase()}</div>
                   <div className="text-center space-y-2">
                     <p className="text-xl font-black uppercase tracking-[0.2em] text-foreground">{currentName}</p>
                     <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{user?.email}</p>
@@ -542,67 +535,57 @@ export default function DashboardPage() {
         </div>
       </main>
 
-      {/* SOS Intercept Modal */}
-      <Dialog open={!!interceptAlert} onOpenChange={() => setInterceptAlert(null)}>
-        <DialogContent className="max-w-2xl neo-flat p-0 border-none bg-[#ECF0F3] [&>button]:hidden flex flex-col overflow-hidden max-h-[90vh] shadow-[0_0_50px_rgba(239,68,68,0.2)]">
-          <DialogHeader className="p-8 pb-4 flex-shrink-0 bg-destructive/5 border-b border-destructive/10">
-            <div className="flex justify-between items-center w-full">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 neo-inset flex items-center justify-center text-destructive animate-pulse border border-destructive/30 bg-white">
-                  <AlertTriangle className="h-6 w-6" />
-                </div>
-                <div>
-                  <DialogTitle className="text-xl font-black uppercase tracking-tight text-foreground">Tactical Intercept</DialogTitle>
-                  <p className={cn("text-[9px] font-bold uppercase tracking-widest mt-1", interceptAlert?.type === 'sos' ? "text-destructive" : "text-primary")}>
-                    {interceptAlert?.type === 'sos' ? "High Intensity Alert Active" : "Tactical Telemetry Active"}
-                  </p>
-                </div>
-              </div>
-              {interceptAlert?.type === 'sos' && (
-                <Badge className="bg-destructive text-foreground border-none text-[8px] font-bold px-4 py-1 animate-pulse uppercase shadow-[0_0_15px_rgba(239,68,68,0.5)]">Critical</Badge>
-              )}
-            </div>
-          </DialogHeader>
-
-          <div className="flex-1 overflow-y-auto px-8 py-8 space-y-6">
-            <div className="neo-inset p-6 space-y-4 border border-black/5">
-              <div className="flex items-center gap-4">
-                 <div className="h-10 w-10 neo-flat flex items-center justify-center text-foreground bg-white">
-                   {interceptAlert?.type === 'sos' ? <AlertTriangle className="h-5 w-5 text-destructive/60" /> : <Radar className="h-5 w-5 text-primary/60" />}
-                 </div>
-                 <p className="text-[10px] font-bold uppercase tracking-widest leading-relaxed text-foreground">{interceptAlert?.message || 'Awaiting Device Telemetry'}</p>
-              </div>
-              <div className="grid grid-cols-1 gap-4">
-                 <div className="neo-flat bg-background/50 p-4 space-y-1 border border-black/5">
-                    <p className="text-[8px] font-bold text-muted-foreground uppercase">Signal Time</p>
-                    <p className="text-[10px] font-black uppercase text-foreground">{interceptAlert && new Date(interceptAlert.createdAt).toLocaleTimeString()}</p>
-                 </div>
-              </div>
-            </div>
-
-            {(interceptAlert?.latitude !== undefined && interceptAlert?.longitude !== undefined) && (
-              <div className="neo-flat overflow-hidden border border-black/5 shadow-lg">
-                <SOSMap 
-                  latitude={interceptAlert.latitude} 
-                  longitude={interceptAlert.longitude} 
-                  label={interceptAlert?.type === 'sos' ? "SOS ORIGIN" : "ASSET POSITION"}
-                />
-              </div>
-            )}
-          </div>
-
-          <div className="p-8 pt-4 border-t border-black/5 flex-shrink-0 bg-background/30">
-            <Button 
-              onClick={() => setInterceptAlert(null)}
-              className="w-full h-16 neo-btn bg-white text-foreground hover:bg-destructive hover:text-white text-[11px] font-bold uppercase tracking-[0.4em] transition-all"
+      {/* Confirmation Dialogs */}
+      <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+        <AlertDialogContent className="neo-flat p-8 border-none bg-[#ECF0F3] max-w-md shadow-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-black uppercase tracking-tight text-foreground flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-destructive" /> Confirm Purge
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground pt-4 leading-relaxed">
+              Are you sure you want to remove <span className="text-foreground">{deleteConfirm?.name}</span>? This action is permanent and will decommission the asset from the terminal network.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="pt-6 gap-3">
+            <AlertDialogCancel className="neo-btn h-12 flex-1 text-[10px] font-bold uppercase bg-background text-foreground">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (deleteConfirm?.type === 'buddy') deleteBuddy(deleteConfirm.id);
+                if (deleteConfirm?.type === 'node') deleteNode(deleteConfirm.id);
+                if (deleteConfirm?.type === 'group') deleteGroup(deleteConfirm.id);
+                setDeleteConfirm(null);
+              }}
+              className="neo-btn h-12 flex-1 text-[10px] font-bold uppercase bg-destructive text-white hover:bg-destructive/90"
             >
-              CLOSE COMMAND
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+              Confirm Purge
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-      {/* Buddy CRUD Dialog */}
+      <AlertDialog open={!!pendingUpdate} onOpenChange={() => setPendingUpdate(null)}>
+        <AlertDialogContent className="neo-flat p-8 border-none bg-[#ECF0F3] max-w-md shadow-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-black uppercase tracking-tight text-foreground flex items-center gap-3">
+              <ShieldCheck className="h-5 w-5 text-primary" /> Confirm Synchronization
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground pt-4 leading-relaxed">
+              Are you sure you want to synchronize these changes to the master vault? Existing data signatures will be overwritten.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="pt-6 gap-3">
+            <AlertDialogCancel className="neo-btn h-12 flex-1 text-[10px] font-bold uppercase bg-background text-foreground">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={executeUpdate}
+              className="neo-btn h-12 flex-1 text-[10px] font-bold uppercase bg-primary text-white hover:bg-primary/90"
+            >
+              Confirm Change
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Existing Dialogs (Buddies, Nodes, Protocols, etc.) */}
       <Dialog open={isBuddyDialogOpen} onOpenChange={setIsBuddyDialogOpen}>
         <DialogContent className="neo-flat p-8 border-none bg-[#ECF0F3] max-w-md shadow-2xl">
           <DialogHeader>
@@ -621,7 +604,7 @@ export default function DashboardPage() {
               <Input name="phoneNumber" defaultValue={editingBuddy?.phoneNumber} required className="h-12 neo-inset bg-background text-foreground border-none px-5" />
             </div>
             <DialogFooter className="pt-4">
-              <Button type="submit" className="w-full h-14 neo-btn bg-background text-foreground hover:text-primary text-[10px] font-bold uppercase tracking-[0.2em] transition-all">
+              <Button type="submit" className="w-full h-14 neo-btn bg-background text-foreground hover:text-primary text-[10px] font-bold uppercase tracking-[0.2em]">
                 {editingBuddy ? "SYNCHRONIZE" : "INITIALIZE"}
               </Button>
             </DialogFooter>
@@ -629,7 +612,6 @@ export default function DashboardPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Node CRUD Dialog */}
       <Dialog open={isNodeDialogOpen} onOpenChange={setIsNodeDialogOpen}>
         <DialogContent className="neo-flat p-8 border-none bg-[#ECF0F3] max-w-md shadow-2xl">
           <DialogHeader>
@@ -648,7 +630,7 @@ export default function DashboardPage() {
               <Input name="hardwareId" defaultValue={editingNode?.hardwareId} required className="h-12 neo-inset bg-background text-foreground border-none px-5" />
             </div>
             <DialogFooter className="pt-4">
-              <Button type="submit" className="w-full h-14 neo-btn bg-background text-foreground hover:text-primary text-[10px] font-bold uppercase tracking-[0.2em] transition-all">
+              <Button type="submit" className="w-full h-14 neo-btn bg-background text-foreground hover:text-primary text-[10px] font-bold uppercase tracking-[0.2em]">
                 {editingNode ? "SYNCHRONIZE" : "ARM ASSET"}
               </Button>
             </DialogFooter>
@@ -656,13 +638,11 @@ export default function DashboardPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Protocols Dialog */}
       <Dialog open={isProtocolDialogOpen} onOpenChange={setIsProtocolDialogOpen}>
         <DialogContent className="neo-flat p-8 border-none bg-[#ECF0F3] max-w-md shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-xl font-black uppercase tracking-tight text-foreground flex items-center gap-3">
-              <ShieldAlert className="h-5 w-5 text-primary" />
-              Security Protocols
+              <ShieldAlert className="h-5 w-5 text-primary" /> Security Protocols
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-8 mt-4">
@@ -670,29 +650,59 @@ export default function DashboardPage() {
               <Label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest ml-1">New Protocol Group</Label>
               <div className="flex gap-2">
                 <Input name="groupName" required className="h-10 neo-inset bg-background text-foreground flex-1 border-none px-4" />
-                <Button type="submit" size="icon" className="h-10 w-10 neo-btn bg-background text-primary transition-all">
-                  <PlusSquare className="h-4 w-4" />
-                </Button>
+                <Button type="submit" size="icon" className="h-10 w-10 neo-btn bg-background text-primary"><PlusSquare className="h-4 w-4" /></Button>
               </div>
             </form>
-
             <div className="space-y-4">
               <Label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Active Groups</Label>
               <ScrollArea className="h-40 pr-4">
-                {groups.length === 0 ? (
-                  <p className="text-[9px] text-center text-muted-foreground py-4 uppercase">No Groups Defined</p>
-                ) : (
-                  groups.map(group => (
-                    <div key={group.id} className="flex justify-between items-center neo-inset p-3 mb-2 border border-black/5 bg-white/30 shadow-inner">
-                      <span className="text-[10px] font-black uppercase text-foreground">{group.name}</span>
-                      <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive hover:bg-destructive/10 rounded-full" onClick={() => deleteGroup(group.id)}>
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  ))
-                )}
+                {groups.length === 0 ? <p className="text-[9px] text-center text-muted-foreground py-4 uppercase">No Groups Defined</p> : groups.map(group => (
+                  <div key={group.id} className="flex justify-between items-center neo-inset p-3 mb-2 border border-black/5 bg-white/30 shadow-inner">
+                    <span className="text-[10px] font-black uppercase text-foreground">{group.name}</span>
+                    <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => setDeleteConfirm({ id: group.id, type: 'group', name: group.name })}>
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
               </ScrollArea>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!interceptAlert} onOpenChange={() => setInterceptAlert(null)}>
+        <DialogContent className="max-w-2xl neo-flat p-0 border-none bg-[#ECF0F3] [&>button]:hidden flex flex-col overflow-hidden max-h-[90vh] shadow-[0_0_50px_rgba(239,68,68,0.2)]">
+          <DialogHeader className="p-8 pb-4 flex-shrink-0 bg-destructive/5 border-b border-destructive/10">
+            <div className="flex justify-between items-center w-full">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 neo-inset flex items-center justify-center text-destructive animate-pulse border border-destructive/30 bg-white"><AlertTriangle className="h-6 w-6" /></div>
+                <div>
+                  <DialogTitle className="text-xl font-black uppercase tracking-tight text-foreground">Tactical Intercept</DialogTitle>
+                  <p className={cn("text-[9px] font-bold uppercase tracking-widest mt-1", interceptAlert?.type === 'sos' ? "text-destructive" : "text-primary")}>{interceptAlert?.type === 'sos' ? "High Intensity Alert Active" : "Tactical Telemetry Active"}</p>
+                </div>
+              </div>
+              {interceptAlert?.type === 'sos' && <Badge className="bg-destructive text-foreground border-none text-[8px] font-bold px-4 py-1 animate-pulse uppercase shadow-[0_0_15px_rgba(239,68,68,0.5)]">Critical</Badge>}
+            </div>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto px-8 py-8 space-y-6">
+            <div className="neo-inset p-6 space-y-4 border border-black/5">
+              <div className="flex items-center gap-4">
+                 <div className="h-10 w-10 neo-flat flex items-center justify-center text-foreground bg-white">{interceptAlert?.type === 'sos' ? <AlertTriangle className="h-5 w-5 text-destructive/60" /> : <Radar className="h-5 w-5 text-primary/60" />}</div>
+                 <p className="text-[10px] font-bold uppercase tracking-widest leading-relaxed text-foreground">{interceptAlert?.message || 'Awaiting Device Telemetry'}</p>
+              </div>
+              <div className="neo-flat bg-background/50 p-4 space-y-1 border border-black/5">
+                <p className="text-[8px] font-bold text-muted-foreground uppercase">Signal Time</p>
+                <p className="text-[10px] font-black uppercase text-foreground">{interceptAlert && new Date(interceptAlert.createdAt).toLocaleTimeString()}</p>
+              </div>
+            </div>
+            {interceptAlert?.latitude !== undefined && interceptAlert?.longitude !== undefined && (
+              <div className="neo-flat overflow-hidden border border-black/5 shadow-lg">
+                <SOSMap latitude={interceptAlert.latitude} longitude={interceptAlert.longitude} label={interceptAlert?.type === 'sos' ? "SOS ORIGIN" : "ASSET POSITION"} />
+              </div>
+            )}
+          </div>
+          <div className="p-8 pt-4 border-t border-black/5 flex-shrink-0 bg-background/30">
+            <Button onClick={() => setInterceptAlert(null)} className="w-full h-16 neo-btn bg-white text-foreground hover:bg-destructive hover:text-white text-[11px] font-bold uppercase tracking-[0.4em]">CLOSE COMMAND</Button>
           </div>
         </DialogContent>
       </Dialog>
