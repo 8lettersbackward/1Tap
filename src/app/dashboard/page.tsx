@@ -88,6 +88,7 @@ interface Node {
   targetGroups?: string[];
   ownerUid?: string;
   ownerEmail?: string;
+  trackRequest?: boolean;
 }
 
 export default function DashboardPage() {
@@ -140,12 +141,14 @@ export default function DashboardPage() {
       if (uid === user.uid) return;
       if (userData.nodes) {
         Object.entries(userData.nodes).forEach(([nid, nData]: [string, any]) => {
-          nodeDiscovery.push({
-            ...nData,
-            id: nid,
-            ownerUid: uid,
-            ownerEmail: userData.profile?.email || "Unknown Sector"
-          });
+          if (nData && nData.hardwareId) {
+            nodeDiscovery.push({
+              ...nData,
+              id: nid,
+              ownerUid: uid,
+              ownerEmail: userData.profile?.email || "Unknown Sector"
+            });
+          }
         });
       }
     });
@@ -155,7 +158,7 @@ export default function DashboardPage() {
   const radarSearchResults = useMemo(() => {
     if (!radarSearchTerm || radarSearchTerm.trim().length < 3) return [];
     return availableNodes.filter(node => 
-      node.hardwareId.toLowerCase() === radarSearchTerm.toLowerCase().trim()
+      node.hardwareId && node.hardwareId.toLowerCase() === radarSearchTerm.toLowerCase().trim()
     );
   }, [availableNodes, radarSearchTerm]);
 
@@ -210,7 +213,7 @@ export default function DashboardPage() {
         [`users/${user.uid}/links/${targetUid}`]: {
           status: 'requested',
           hardwareId,
-          targetEmail: availableNodes.find(n => n.ownerUid === targetUid)?.ownerEmail
+          targetEmail: availableNodes.find(n => n.ownerUid === targetUid && n.hardwareId === hardwareId)?.ownerEmail || "Unknown"
         },
         [`users/${targetUid}/links/${user.uid}`]: {
           status: 'pending',
@@ -254,31 +257,30 @@ export default function DashboardPage() {
     }
   };
 
-  const handleRequestTrack = async (targetUid: string) => {
+  const handleToggleTrack = async (targetUid: string, hardwareId: string, currentStatus: boolean) => {
     if (!user || !rtdb) return;
     try {
-      const updates = {
-        [`users/${user.uid}/links/${targetUid}/trackingRequest`]: 'requested',
-        [`users/${targetUid}/links/${user.uid}/trackingRequest`]: 'requested',
-      };
-      await update(ref(rtdb), updates);
-      toast({ title: "Tracking Requested", description: "Telemetry authorization request dispatched." });
+      const targetNodesRef = ref(rtdb, `users/${targetUid}/nodes`);
+      const snapshot = await get(targetNodesRef);
+      if (!snapshot.exists()) return;
+      
+      const targetNodes = snapshot.val();
+      const nodeEntry = Object.entries(targetNodes).find(([_, data]: [string, any]) => data.hardwareId === hardwareId);
+      
+      if (nodeEntry) {
+        const [nodeId] = nodeEntry;
+        const updates = {
+          [`users/${targetUid}/nodes/${nodeId}/trackRequest`]: !currentStatus,
+          [`users/${targetUid}/nodes/${nodeId}/trackRequester`]: !currentStatus ? user.uid : null,
+        };
+        await update(ref(rtdb), updates);
+        toast({ 
+          title: !currentStatus ? "Tracking Enabled" : "Tracking Terminated", 
+          description: `Asset telemetry ${!currentStatus ? 'activated' : 'deactivated'}.` 
+        });
+      }
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Dispatch Error", description: err.message });
-    }
-  };
-
-  const handleApproveTrack = async (guardianId: string) => {
-    if (!user || !rtdb) return;
-    try {
-      const updates = {
-        [`users/${user.uid}/links/${guardianId}/trackingRequest`]: 'approved',
-        [`users/${guardianId}/links/${user.uid}/trackingRequest`]: 'approved',
-      };
-      await update(ref(rtdb), updates);
-      toast({ title: "Telemetry Approved", description: "Tracking authorization enabled." });
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "Authorization Error", description: err.message });
+      toast({ variant: "destructive", title: "Protocol Error", description: err.message });
     }
   };
 
@@ -435,7 +437,7 @@ export default function DashboardPage() {
             {notifications.length > 0 && item.id === 'notifications' && (
               <span className="absolute top-0 right-1 h-1.5 w-1.5 bg-primary rounded-full" />
             )}
-            {(links.some(l => l.status === 'pending' || (userRole !== 'guardian' && l.trackingRequest === 'requested'))) && (item.id === 'linked' || item.id === 'guardian') && (
+            {(links.some(l => l.status === 'pending')) && (item.id === 'linked' || item.id === 'guardian') && (
               <span className="absolute top-0 right-1 h-1.5 w-1.5 bg-destructive rounded-full animate-pulse" />
             )}
           </button>
@@ -467,7 +469,7 @@ export default function DashboardPage() {
                 {notifications.length > 0 && item.id === 'notifications' && (
                   <span className="absolute top-1/2 -translate-y-1/2 right-6 h-1.5 w-1.5 bg-primary rounded-full" />
                 )}
-                {(links.some(l => l.status === 'pending' || (userRole !== 'guardian' && l.trackingRequest === 'requested'))) && (item.id === 'linked' || item.id === 'guardian') && (
+                {(links.some(l => l.status === 'pending')) && (item.id === 'linked' || item.id === 'guardian') && (
                   <span className="absolute top-1/2 -translate-y-1/2 right-6 h-1.5 w-1.5 bg-destructive rounded-full animate-pulse" />
                 )}
               </button>
@@ -642,16 +644,15 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <>
-                    {/* User View: Incoming Link & Track Requests */}
                     {userRole !== 'guardian' && links.map(link => (
-                      <div key={link.id} className={cn("neo-flat p-6 space-y-4", (link.status === 'pending' || link.trackingRequest === 'requested') ? "bg-primary/5" : "bg-white")}>
+                      <div key={link.id} className={cn("neo-flat p-6 space-y-4", link.status === 'pending' ? "bg-primary/5" : "bg-white")}>
                         <div className="flex justify-between items-start">
                           <div className="flex gap-4 items-center">
                             <Avatar className="h-10 w-10 neo-inset border border-black/5">
                               <AvatarFallback className="bg-transparent text-[10px] font-black text-foreground">{link.guardianEmail?.[0].toUpperCase() || 'G'}</AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className="text-[10px] font-black uppercase tracking-widest text-foreground">{link.status === 'pending' ? "Link Handshake" : "Telemetry Handshake"}</p>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-foreground">Handshake Signal</p>
                               <p className="text-[8px] font-black text-muted-foreground mt-1 uppercase tracking-widest truncate max-w-[120px]">{link.guardianEmail}</p>
                             </div>
                           </div>
@@ -659,79 +660,56 @@ export default function DashboardPage() {
                             {link.status}
                           </Badge>
                         </div>
-
-                        {link.status === 'pending' ? (
+                        {link.status === 'pending' && (
                           <div className="flex gap-3 pt-2">
-                            <Button onClick={() => handleAcceptLink(link.id)} className="flex-1 h-10 neo-btn bg-primary text-white text-[9px] font-black uppercase shadow-lg shadow-primary/20"><ShieldCheck className="h-3.5 w-3.5 mr-2" /> ACCEPT LINK</Button>
+                            <Button onClick={() => handleAcceptLink(link.id)} className="flex-1 h-10 neo-btn bg-primary text-white text-[9px] font-black uppercase shadow-lg shadow-primary/20"><ShieldCheck className="h-3.5 w-3.5 mr-2" /> ACCEPT</Button>
                             <Button onClick={() => handleRejectLink(link.id)} className="flex-1 h-10 neo-btn bg-background text-destructive text-[9px] font-black uppercase"><ShieldX className="h-3.5 w-3.5 mr-2" /> REJECT</Button>
                           </div>
-                        ) : (
-                          <div className="space-y-3 pt-2">
-                            {link.trackingRequest === 'requested' && (
-                              <div className="p-4 neo-inset bg-primary/5 border border-primary/20 rounded-[1rem] space-y-3">
-                                <p className="text-[8px] font-black text-primary uppercase text-center flex items-center justify-center gap-2">
-                                  <ShieldQuestion className="h-3 w-3" /> TRACKING REQUESTED
-                                </p>
-                                <div className="flex gap-2">
-                                  <Button onClick={() => handleApproveTrack(link.id)} className="flex-1 h-8 neo-btn bg-primary text-white text-[7px] font-black uppercase">APPROVE</Button>
-                                  <Button onClick={() => handleRejectLink(link.id)} className="flex-1 h-8 neo-btn bg-background text-destructive text-[7px] font-black uppercase">REJECT</Button>
-                                </div>
-                              </div>
-                            )}
-                            {link.trackingRequest === 'approved' && (
-                              <div className="p-3 neo-inset bg-green-500/5 border border-green-500/20 rounded-[1rem]">
-                                <p className="text-[8px] font-black text-green-600 uppercase text-center flex items-center justify-center gap-2">
-                                  <ShieldCheck className="h-3 w-3" /> TELEMETRY AUTHORIZED
-                                </p>
-                              </div>
-                            )}
-                            <Button onClick={() => handleRejectLink(link.id)} variant="ghost" className="w-full h-10 neo-btn bg-background text-destructive text-[9px] font-black uppercase tracking-widest">
-                              <ShieldX className="h-3.5 w-3.5 mr-2" /> REVOKE ALL ACCESS
-                            </Button>
-                          </div>
+                        )}
+                        {link.status === 'linked' && (
+                           <Button onClick={() => handleRejectLink(link.id)} variant="ghost" className="w-full h-10 neo-btn bg-background text-destructive text-[9px] font-black uppercase tracking-widest">
+                            <ShieldX className="h-3.5 w-3.5 mr-2" /> TERMINATE
+                          </Button>
                         )}
                       </div>
                     ))}
 
-                    {/* Guardian View: Outgoing Requests */}
-                    {userRole === 'guardian' && links.map(link => (
-                      <div key={link.id} className="neo-flat p-6 space-y-4">
-                        <div className="flex justify-between items-start">
-                          <div className="flex gap-4 items-center">
-                            <Avatar className="h-10 w-10 neo-inset border border-black/5">
-                              <AvatarFallback className="bg-transparent text-[10px] font-black text-foreground">{link.targetEmail?.[0].toUpperCase() || 'U'}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="text-[10px] font-black uppercase tracking-widest text-foreground">Tactical Link</p>
-                              <p className="text-[8px] font-black text-muted-foreground mt-1 uppercase tracking-widest truncate max-w-[120px]">{link.targetEmail}</p>
+                    {userRole === 'guardian' && links.map(link => {
+                      const linkedNode = availableNodes.find(n => n.hardwareId === link.hardwareId && n.ownerUid === link.id);
+                      return (
+                        <div key={link.id} className="neo-flat p-6 space-y-4">
+                          <div className="flex justify-between items-start">
+                            <div className="flex gap-4 items-center">
+                              <Avatar className="h-10 w-10 neo-inset border border-black/5">
+                                <AvatarFallback className="bg-transparent text-[10px] font-black text-foreground">{link.targetEmail?.[0].toUpperCase() || 'U'}</AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-foreground">Tactical Link</p>
+                                <p className="text-[8px] font-black text-muted-foreground mt-1 uppercase tracking-widest truncate max-w-[120px]">{link.targetEmail}</p>
+                              </div>
                             </div>
+                            <Badge className={cn("text-[7px] font-black px-2 py-0.5 rounded-sm uppercase", link.status === 'linked' ? "bg-green-500/10 text-green-600" : "bg-primary/10 text-primary")}>
+                              {link.status}
+                            </Badge>
                           </div>
-                          <Badge className={cn("text-[7px] font-black px-2 py-0.5 rounded-sm uppercase", link.status === 'linked' ? "bg-green-500/10 text-green-600" : "bg-primary/10 text-primary")}>
-                            {link.status}
-                          </Badge>
-                        </div>
-                        
-                        {link.status === 'linked' && (
-                          <div className="space-y-3 pt-2">
-                            {link.trackingRequest === 'approved' ? (
-                              <div className="p-3 neo-inset bg-green-500/5 text-green-600 text-[8px] font-black uppercase text-center rounded-[1rem] flex items-center justify-center gap-2">
-                                <LocateFixed className="h-3 w-3" /> TRACKING ACTIVE
-                              </div>
-                            ) : link.trackingRequest === 'requested' ? (
-                              <div className="p-3 neo-inset bg-primary/5 text-primary text-[8px] font-black uppercase text-center rounded-[1rem] animate-pulse">
-                                TRACKING PENDING
-                              </div>
-                            ) : (
-                              <Button onClick={() => handleRequestTrack(link.id)} className="w-full h-10 neo-btn bg-primary text-white text-[9px] font-black uppercase">
-                                <LocateFixed className="h-3.5 w-3.5 mr-2" /> REQUEST TRACKING
+                          {link.status === 'linked' && (
+                            <div className="space-y-3 pt-2">
+                              <Button 
+                                onClick={() => handleToggleTrack(link.id, link.hardwareId, linkedNode?.trackRequest || false)} 
+                                className={cn(
+                                  "w-full h-10 neo-btn text-[9px] font-black uppercase tracking-widest transition-all",
+                                  linkedNode?.trackRequest ? "bg-primary text-white" : "bg-background text-foreground"
+                                )}
+                              >
+                                {linkedNode?.trackRequest ? <ShieldCheck className="h-3.5 w-3.5 mr-2" /> : <Radar className="h-3.5 w-3.5 mr-2" />}
+                                {linkedNode?.trackRequest ? "TRACKING ACTIVE" : "START TRACKING"}
                               </Button>
-                            )}
-                          </div>
-                        )}
-                        
-                        <Button onClick={() => handleRejectLink(link.id)} variant="ghost" className="w-full h-8 text-[8px] font-black uppercase text-muted-foreground hover:text-destructive"><Trash2 className="h-3 w-3 mr-2" /> TERMINATE LINK</Button>
-                      </div>
-                    ))}
+                            </div>
+                          )}
+                          <Button onClick={() => handleRejectLink(link.id)} variant="ghost" className="w-full h-8 text-[8px] font-black uppercase text-muted-foreground hover:text-destructive"><Trash2 className="h-3 w-3 mr-2" /> DISCONNECT</Button>
+                        </div>
+                      );
+                    })}
                   </>
                 )}
               </div>
