@@ -503,6 +503,14 @@ export default function DashboardPage() {
           updates[`users/${user.uid}/buddies/${buddy.id}/groups`] = filteredGroups;
         }
       });
+
+      nodes.forEach(node => {
+        const groupName = groups.find(g => g.id === id)?.name;
+        if (groupName && node.targetGroups && node.targetGroups.includes(groupName)) {
+          const filteredTargetGroups = node.targetGroups.filter(gn => gn !== groupName);
+          updates[`users/${user.uid}/nodes/${node.id}/targetGroups`] = filteredTargetGroups;
+        }
+      });
       
       await update(ref(rtdb), updates);
       toast({ title: "Protocol Purged", description: "Security group decommissioned and purged from all personnel." });
@@ -690,7 +698,7 @@ export default function DashboardPage() {
             <div className="space-y-8">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h2 className="text-xl md:text-2xl font-black tracking-tight uppercase text-foreground">Manage Nodes</h2>
-                <Button onClick={() => { setEditingNode(null); setSelectedGroups([]); setIsNodeDialogOpen(true); }} className="neo-btn w-full sm:w-auto h-10 px-4 text-[9px] font-black uppercase tracking-widest bg-background text-foreground hover:text-primary transition-all">
+                <Button onClick={() => { setEditingNode(null); setSelectedGroups(groups.map(g => g.id)); setIsNodeDialogOpen(true); }} className="neo-btn w-full sm:w-auto h-10 px-4 text-[9px] font-black uppercase tracking-widest bg-background text-foreground hover:text-primary transition-all">
                   <Cpu className="h-4 w-4 mr-2 text-primary" /> ARM NODE
                 </Button>
               </div>
@@ -905,8 +913,8 @@ export default function DashboardPage() {
                   ) : (
                     notifications.map(n => (
                       <div key={n.id} className={cn("mb-6 p-6 neo-flat relative group overflow-hidden transition-all duration-300", n.type === 'sos' ? "bg-destructive/5" : "bg-primary/5")}>
-                        <div className="flex flex-col sm:flex-row justify-between items-start gap-4 relative z-10">
-                          <div className="flex gap-4 items-center min-w-0 flex-1">
+                        <div className="flex flex-col justify-between items-start gap-6 relative z-10">
+                          <div className="flex gap-4 items-center min-w-0 flex-1 w-full">
                             {n.type === 'sos' ? (
                               <div className="h-10 w-10 neo-inset flex items-center justify-center text-destructive animate-pulse border border-destructive/20 bg-white rounded-full shrink-0">
                                 <AlertTriangle className="h-5 w-5" />
@@ -924,7 +932,7 @@ export default function DashboardPage() {
                             </div>
                           </div>
                           {n.latitude !== undefined && n.longitude !== undefined && (
-                            <Button size="sm" className="neo-btn w-full sm:w-auto h-8 px-4 text-[8px] font-black uppercase tracking-widest bg-background text-foreground hover:text-primary shrink-0" onClick={() => setInterceptAlert({ ...n, id: n.id })}>
+                            <Button size="sm" className="neo-btn w-full h-10 px-4 text-[8px] font-black uppercase tracking-widest bg-background text-foreground hover:text-primary shrink-0" onClick={() => setInterceptAlert({ ...n, id: n.id })}>
                               <Eye className="h-3.5 w-3.5 mr-2 text-primary/60" /> TACTICAL MAP
                             </Button>
                           )}
