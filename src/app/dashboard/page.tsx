@@ -143,7 +143,6 @@ export default function DashboardPage() {
     if (!buddiesData) return [];
     const activeGroupIds = new Set(groups.map(g => g.id));
     return Object.entries(buddiesData).map(([id, val]: [string, any]) => {
-      // Ensure only valid groups that exist in buddyGroups are shown
       const validatedGroups = (val.groups || []).filter((gid: string) => activeGroupIds.has(gid));
       return { ...val, id, groups: validatedGroups };
     });
@@ -347,6 +346,26 @@ export default function DashboardPage() {
     }
   };
 
+  const handleToggleNodeGroup = async (nodeId: string, groupName: string, currentTargetGroups: string[]) => {
+    if (!user || !rtdb) return;
+    const isTargeted = currentTargetGroups.includes(groupName);
+    const newTargetGroups = isTargeted 
+      ? currentTargetGroups.filter(g => g !== groupName)
+      : [...currentTargetGroups, groupName];
+    
+    try {
+      await update(ref(rtdb, `users/${user.uid}/nodes/${nodeId}`), {
+        targetGroups: newTargetGroups
+      });
+      toast({ 
+        title: "Protocol Synced", 
+        description: `${groupName} ${isTargeted ? 'deactivated' : 'activated'} for this asset.` 
+      });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Protocol Error", description: err.message });
+    }
+  };
+
   const toggleGroupSelection = (groupId: string, checked: boolean) => {
     setSelectedGroups(prev => 
       checked ? [...prev, groupId] : prev.filter(id => id !== groupId)
@@ -402,7 +421,6 @@ export default function DashboardPage() {
       return;
     }
 
-    // MAP GROUP IDs TO NAMES FOR NODES (as requested)
     const targetGroupNames = selectedGroups.map(id => {
       const g = groups.find(group => group.id === id);
       return g ? g.name : id;
@@ -477,10 +495,8 @@ export default function DashboardPage() {
     if (!user || !rtdb) return;
     try {
       const updates: any = {};
-      // 1. Remove the group itself
       updates[`users/${user.uid}/buddyGroups/${id}`] = null;
       
-      // 2. CASCADE: Remove this group ID from all buddies who have it (as requested)
       buddies.forEach(buddy => {
         if (buddy.groups && buddy.groups.includes(id)) {
           const filteredGroups = buddy.groups.filter((gid: string) => gid !== id);
@@ -697,25 +713,30 @@ export default function DashboardPage() {
                             <p className="text-[8px] font-black text-muted-foreground mt-1 uppercase tracking-widest">{node.hardwareId}</p>
                           </div>
                         </div>
-                        <Badge className={cn("text-[7px] font-black px-3 py-1 uppercase rounded-full border border-black/5 bg-green-500/10 text-green-600")}>
-                          <Circle className="h-1.5 w-1.5 mr-1.5 fill-current animate-pulse" />
-                          ONLINE
-                        </Badge>
                       </div>
 
-                      {node.targetGroups && node.targetGroups.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5">
-                          {node.targetGroups.map(groupVal => {
-                            const groupObj = groups.find(g => g.id === groupVal || g.name === groupVal);
-                            const displayName = groupObj ? groupObj.name : groupVal;
-                            return (
-                              <Badge key={groupVal} className="bg-secondary text-foreground text-[7px] font-black border border-black/5 px-2 py-0.5 rounded-sm uppercase">
-                                {displayName}
-                              </Badge>
-                            );
-                          })}
-                        </div>
-                      )}
+                      <div className="flex flex-wrap gap-1.5">
+                        {groups.map(group => {
+                          const isTargeted = node.targetGroups?.includes(group.name);
+                          return (
+                            <button
+                              key={group.id}
+                              onClick={() => handleToggleNodeGroup(node.id, group.name, node.targetGroups || [])}
+                              className={cn(
+                                "text-[7px] font-black px-2 py-0.5 rounded-sm uppercase border transition-all",
+                                isTargeted 
+                                  ? "bg-primary border-primary text-white shadow-sm" 
+                                  : "bg-secondary/20 border-black/5 text-muted-foreground hover:border-primary/40"
+                              )}
+                            >
+                              {group.name}
+                            </button>
+                          );
+                        })}
+                        {groups.length === 0 && (
+                          <p className="text-[7px] font-black text-muted-foreground/40 uppercase">No Protocols Defined</p>
+                        )}
+                      </div>
 
                       <div className="neo-inset p-3 space-y-1 text-center border border-black/5">
                         <p className="text-[8px] font-black text-foreground/40 uppercase mb-1 tracking-tighter">Current Telemetry</p>
@@ -1012,7 +1033,6 @@ export default function DashboardPage() {
               onClick={() => {
                 const type = deleteConfirm?.type;
                 const id = deleteConfirm?.id;
-                // RELEASE FOCUS FIRST TO PREVENT FREEZE
                 setDeleteConfirm(null);
                 
                 setTimeout(() => {
@@ -1317,10 +1337,6 @@ export default function DashboardPage() {
                   </p>
                 )}
               </div>
-              <Badge className={cn("text-[8px] font-black px-4 py-1.5 uppercase rounded-full border border-black/5 bg-green-500/10 text-green-600")}>
-                <Circle className="h-1.5 w-1.5 mr-2 fill-current animate-pulse" />
-                ONLINE
-              </Badge>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
