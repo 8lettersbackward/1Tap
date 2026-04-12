@@ -207,7 +207,6 @@ export default function DashboardPage() {
         const now = Date.now();
         const timestamp = val.timestamp || val.createdAt || 0;
         
-        // Only set indicator if this notification is fresh (after component mount)
         if (activeTab !== 'notifications' && (now - timestamp < 10000)) {
           setHasNewAlerts(true);
         }
@@ -368,7 +367,6 @@ export default function DashboardPage() {
     const normalizedHardwareId = hardwareId.trim().toLowerCase();
     const normalizedNodeName = nodeName.trim().toLowerCase();
 
-    // Global Hardware ID Uniqueness Check
     const isHardwareIdDuplicate = nodes.some(n => n.hardwareId.toLowerCase() === normalizedHardwareId && n.id !== editingNode?.id) || 
                                  availableNodes.some(n => n.hardwareId.toLowerCase() === normalizedHardwareId);
     
@@ -381,7 +379,6 @@ export default function DashboardPage() {
       return;
     }
 
-    // Local Node Name Uniqueness Check
     const isNodeNameDuplicate = nodes.some(n => n.nodeName.toLowerCase() === normalizedNodeName && n.id !== editingNode?.id);
     
     if (isNodeNameDuplicate) {
@@ -393,13 +390,19 @@ export default function DashboardPage() {
       return;
     }
 
+    // MAP GROUP IDs TO NAMES AS REQUESTED
+    const targetGroupNames = selectedGroups.map(id => {
+      const g = groups.find(group => group.id === id);
+      return g ? g.name : id;
+    });
+
     const nodeData = {
       nodeName,
       hardwareId,
       phoneNumber: formData.get('nodePhoneNumber') as string,
       status: 'online',
       temperature: parseFloat(formData.get('tacticalTemperature') as string) || 24.5,
-      targetGroups: selectedGroups
+      targetGroups: targetGroupNames
     };
 
     setIsNodeDialogOpen(false);
@@ -503,7 +506,6 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-background text-foreground overflow-x-hidden">
-      {/* Mobile Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden flex justify-around items-center p-4 bg-background/80 backdrop-blur-md border-t border-black/5 pb-8 shadow-[0_-10px_20px_rgba(0,0,0,0.05)]">
         {navItems.map((item) => (
           <button
@@ -678,11 +680,12 @@ export default function DashboardPage() {
 
                       {node.targetGroups && node.targetGroups.length > 0 && (
                         <div className="flex flex-wrap gap-1.5">
-                          {node.targetGroups.map(gid => {
-                            const groupName = groups.find(g => g.id === gid)?.name || "Protocol Signal";
+                          {node.targetGroups.map(groupVal => {
+                            const groupObj = groups.find(g => g.id === groupVal || g.name === groupVal);
+                            const displayName = groupObj ? groupObj.name : groupVal;
                             return (
-                              <Badge key={gid} className="bg-secondary text-foreground text-[7px] font-black border border-black/5 px-2 py-0.5 rounded-sm uppercase">
-                                {groupName}
+                              <Badge key={groupVal} className="bg-secondary text-foreground text-[7px] font-black border border-black/5 px-2 py-0.5 rounded-sm uppercase">
+                                {displayName}
                               </Badge>
                             );
                           })}
@@ -700,7 +703,15 @@ export default function DashboardPage() {
                         <Button size="icon" variant="ghost" className="h-8 w-8 neo-btn text-muted-foreground hover:text-primary" onClick={() => setViewingNode(node)}>
                           <Eye className="h-3.5 w-3.5" />
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-8 w-8 neo-btn text-muted-foreground hover:text-primary" onClick={() => { setEditingNode(node); setSelectedGroups(node.targetGroups || []); setIsNodeDialogOpen(true); }}>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 neo-btn text-muted-foreground hover:text-primary" onClick={() => { 
+                          setEditingNode(node); 
+                          const mappedGroups = node.targetGroups ? node.targetGroups.map(val => {
+                            const g = groups.find(group => group.name === val || group.id === val);
+                            return g ? g.id : val;
+                          }) : [];
+                          setSelectedGroups(mappedGroups); 
+                          setIsNodeDialogOpen(true); 
+                        }}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
                         <Button size="icon" variant="ghost" className="h-8 w-8 neo-btn text-muted-foreground hover:text-destructive" onClick={() => setDeleteConfirm({ id: node.id, type: 'node', name: node.nodeName })}>
@@ -849,25 +860,25 @@ export default function DashboardPage() {
                     notifications.map(n => (
                       <div key={n.id} className={cn("mb-6 p-6 neo-flat relative group overflow-hidden transition-all duration-300", n.type === 'sos' ? "bg-destructive/5" : "bg-primary/5")}>
                         <div className="flex flex-col sm:flex-row justify-between items-start gap-4 relative z-10">
-                          <div className="flex gap-4 items-center">
+                          <div className="flex gap-4 items-center min-w-0 flex-1">
                             {n.type === 'sos' ? (
-                              <div className="h-10 w-10 neo-inset flex items-center justify-center text-destructive animate-pulse border border-destructive/20 bg-white rounded-full">
+                              <div className="h-10 w-10 neo-inset flex items-center justify-center text-destructive animate-pulse border border-destructive/20 bg-white rounded-full shrink-0">
                                 <AlertTriangle className="h-5 w-5" />
                               </div>
                             ) : (
-                              <div className="h-10 w-10 neo-inset flex items-center justify-center text-primary border border-primary/20 bg-white rounded-full">
+                              <div className="h-10 w-10 neo-inset flex items-center justify-center text-primary border border-primary/20 bg-white rounded-full shrink-0">
                                 <Radar className="h-5 w-5" />
                               </div>
                             )}
-                            <div>
-                              <p className="text-[10px] font-black uppercase tracking-widest leading-relaxed text-foreground">{n.message || 'Incoming Telemetry Fix'}</p>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[10px] font-black uppercase tracking-widest leading-relaxed text-foreground break-words">{n.message || 'Incoming Telemetry Fix'}</p>
                               <div className="flex items-center gap-3 mt-1.5">
                                 <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">{new Date(n.createdAt).toLocaleString()}</p>
                               </div>
                             </div>
                           </div>
                           {n.latitude !== undefined && n.longitude !== undefined && (
-                            <Button size="sm" className="neo-btn w-full sm:w-auto h-8 px-4 text-[8px] font-black uppercase tracking-widest bg-background text-foreground hover:text-primary" onClick={() => setInterceptAlert({ ...n, id: n.id })}>
+                            <Button size="sm" className="neo-btn w-full sm:w-auto h-8 px-4 text-[8px] font-black uppercase tracking-widest bg-background text-foreground hover:text-primary shrink-0" onClick={() => setInterceptAlert({ ...n, id: n.id })}>
                               <Eye className="h-3.5 w-3.5 mr-2 text-primary/60" /> TACTICAL MAP
                             </Button>
                           )}
@@ -960,7 +971,6 @@ export default function DashboardPage() {
         </div>
       </main>
 
-      {/* Operational Confirmation Modals */}
       <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
         <AlertDialogContent className="neo-flat p-8 border-none bg-[#ECF0F3] max-w-md shadow-2xl">
           <AlertDialogHeader>
@@ -975,11 +985,17 @@ export default function DashboardPage() {
             <AlertDialogCancel className="neo-btn h-12 flex-1 text-[10px] font-black uppercase bg-background text-foreground">Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={() => {
-                if (deleteConfirm?.type === 'buddy') deleteBuddy(deleteConfirm.id);
-                if (deleteConfirm?.type === 'node') deleteNode(deleteConfirm.id);
-                if (deleteConfirm?.type === 'group') deleteGroup(deleteConfirm.id);
-                if (deleteConfirm?.type === 'clear-notifications') clearNotifications();
+                const type = deleteConfirm?.type;
+                const id = deleteConfirm?.id;
+                // RELEASE FOCUS FIRST TO PREVENT FREEZE
                 setDeleteConfirm(null);
+                
+                setTimeout(() => {
+                  if (type === 'buddy') deleteBuddy(id!);
+                  if (type === 'node') deleteNode(id!);
+                  if (type === 'group') deleteGroup(id!);
+                  if (type === 'clear-notifications') clearNotifications();
+                }, 100);
               }}
               className="neo-btn h-12 flex-1 text-[10px] font-black uppercase bg-destructive text-white hover:bg-destructive/90"
             >
@@ -1011,7 +1027,6 @@ export default function DashboardPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Primary Configuration Dialogs */}
       <Dialog open={isBuddyDialogOpen} onOpenChange={(open) => { setIsBuddyDialogOpen(open); if (!open) setEditingBuddy(null); }}>
         <DialogContent className="neo-flat p-8 border-none bg-[#ECF0F3] max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
           <DialogHeader>
@@ -1168,7 +1183,7 @@ export default function DashboardPage() {
                     <div key={group.id} className="flex justify-between items-center neo-inset p-4 border border-black/5 bg-white/30 shadow-inner rounded-[1.5rem]">
                       <span className="text-[10px] font-black uppercase text-foreground truncate mr-2">{group.name}</span>
                       <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10 rounded-full shrink-0" onClick={() => setDeleteConfirm({ id: group.id, type: 'group', name: group.name })}>
-                        <X className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   ))}
@@ -1184,7 +1199,7 @@ export default function DashboardPage() {
           <DialogHeader className="p-8 pb-4 flex-shrink-0 bg-destructive/5 border-b border-destructive/10">
             <div className="flex justify-between items-center w-full">
               <div className="flex items-center gap-4">
-                <div className="h-12 w-12 neo-inset flex items-center justify-center text-destructive animate-pulse border border-destructive/30 bg-white rounded-full"><AlertTriangle className="h-6 w-6" /></div>
+                <div className="h-12 w-12 neo-inset flex items-center justify-center text-destructive animate-pulse border border-destructive/30 bg-white rounded-full shrink-0"><AlertTriangle className="h-6 w-6" /></div>
                 <div>
                   <DialogTitle className="text-xl font-black uppercase tracking-tight text-foreground">Tactical Intercept</DialogTitle>
                   <p className={cn("text-[9px] font-black uppercase tracking-widest mt-1 text-foreground")}>{interceptAlert?.type === 'sos' ? "High Intensity Alert Active" : "Tactical Telemetry Active"}</p>
@@ -1196,8 +1211,8 @@ export default function DashboardPage() {
           <div className="flex-1 overflow-y-auto px-8 py-8 space-y-6">
             <div className="neo-inset p-6 space-y-4 border border-black/5 rounded-[1.5rem]">
               <div className="flex items-center gap-4">
-                 <div className="h-10 w-10 neo-flat flex items-center justify-center text-foreground bg-white rounded-full">{interceptAlert?.type === 'sos' ? <AlertTriangle className="h-5 w-5 text-destructive/60" /> : <Radar className="h-5 w-5 text-primary/60" />}</div>
-                 <p className="text-[10px] font-black uppercase tracking-widest leading-relaxed text-foreground">{interceptAlert?.message || 'Awaiting Device Telemetry'}</p>
+                 <div className="h-10 w-10 neo-flat flex items-center justify-center text-foreground bg-white rounded-full shrink-0">{interceptAlert?.type === 'sos' ? <AlertTriangle className="h-5 w-5 text-destructive/60" /> : <Radar className="h-5 w-5 text-primary/60" />}</div>
+                 <p className="text-[10px] font-black uppercase tracking-widest leading-relaxed text-foreground break-words">{interceptAlert?.message || 'Awaiting Device Telemetry'}</p>
               </div>
               <div className="neo-flat bg-background/50 p-4 space-y-1 border border-black/5 rounded-[1.5rem]">
                 <p className="text-[8px] font-black text-muted-foreground uppercase">Signal Time</p>
@@ -1216,7 +1231,6 @@ export default function DashboardPage() {
         </DialogContent>
       </Dialog>
 
-      {/* View Buddy Dialog */}
       <Dialog open={!!viewingBuddy} onOpenChange={(open) => !open && setViewingBuddy(null)}>
         <DialogContent className="neo-flat p-8 border-none bg-[#ECF0F3] max-w-md shadow-2xl">
           <DialogHeader>
@@ -1257,7 +1271,6 @@ export default function DashboardPage() {
         </DialogContent>
       </Dialog>
 
-      {/* View Node Dialog */}
       <Dialog open={!!viewingNode} onOpenChange={(open) => !open && setViewingNode(null)}>
         <DialogContent className="neo-flat p-8 border-none bg-[#ECF0F3] max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
           <DialogHeader>
