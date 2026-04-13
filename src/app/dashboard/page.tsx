@@ -3,7 +3,7 @@
 
 import { useUser, useDatabase, useFirebase } from "@/firebase";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,7 +58,8 @@ import {
   Zap,
   ZapOff,
   MapPin,
-  ChevronDown
+  ChevronDown,
+  User as UserIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ref, push, remove, update, onChildAdded, off, get, serverTimestamp } from "firebase/database";
@@ -193,9 +194,11 @@ export default function DashboardPage() {
 
   const navItems = useMemo(() => {
     return userRole === 'guardian' 
-      ? [{ id: 'guardian', label: 'RADAR', icon: Radar }, { id: 'linked', label: 'LINKS', icon: Link2 }, { id: 'notifications', label: 'ALERTS', icon: Bell }, { id: 'settings', label: 'PROFILE', icon: Settings }]
-      : [{ id: 'buddies', label: 'BUDDIES', icon: Smartphone }, { id: 'nodes', label: 'NODES', icon: Cpu }, { id: 'linked', label: 'LINKED', icon: Link2 }, { id: 'notifications', label: 'ALERTS', icon: Bell }, { id: 'settings', label: 'PROFILE', icon: Settings }];
-  }, [userRole]);
+      ? [{ id: 'guardian', label: 'RADAR', icon: Radar }, { id: 'linked', label: 'MY GUARDIANS', icon: ShieldCheck }, { id: 'notifications', label: 'NOTIFICATION', icon: Bell }, { id: 'settings', label: 'PROFILE', icon: UserIcon }]
+      : [{ id: 'buddies', label: 'MANAGE BUDDIES', icon: Users }, { id: 'nodes', label: 'MANAGE NODES', icon: Cpu }, { id: 'linked', label: 'MY GUARDIANS', icon: ShieldCheck }, { id: 'notifications', label: 'NOTIFICATION', icon: Bell }, { id: 'settings', label: 'PROFILE', icon: UserIcon }];
+  }, [userRole, UserIcon]);
+
+  const relayedAlertsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     setHasMounted(true);
@@ -230,11 +233,36 @@ export default function DashboardPage() {
 
         if (val.type === 'sos' && val.trigger !== 'TrackResponse' && (now - timestamp < 45000)) {
           setInterceptAlert({ ...val, id: snapshot.key });
+          
+          // SOS RELAY LOGIC: If I am a user and I have linked guardians, relay this SOS to them
+          if (userRole === 'user' && !val.isRelay) {
+            const currentAlertId = snapshot.key || 'unknown';
+            if (!relayedAlertsRef.current.has(currentAlertId)) {
+              relayedAlertsRef.current.add(currentAlertId);
+              
+              // Find all linked guardians
+              const guardianLinks = Object.entries(linksData || {}).filter(([_, l]: [string, any]) => l.status === 'linked' && l.guardianEmail);
+              
+              if (guardianLinks.length > 0) {
+                const relayUpdates: any = {};
+                guardianLinks.forEach(([guardianUid, _]) => {
+                  const relayKey = push(ref(rtdb, `users/${guardianUid}/notifications`)).key;
+                  relayUpdates[`users/${guardianUid}/notifications/${relayKey}`] = {
+                    ...val,
+                    isRelay: true,
+                    originalUser: user.email,
+                    relayTimestamp: serverTimestamp()
+                  };
+                });
+                update(ref(rtdb), relayUpdates).catch(e => console.error("Relay failed", e));
+              }
+            }
+          }
         }
       });
       return () => off(notifRef, 'child_added', listener);
     }
-  }, [user, userLoading, router, rtdb, activeTab, lastReadTimestamp]);
+  }, [user, userLoading, router, rtdb, activeTab, lastReadTimestamp, userRole, linksData]);
 
   useEffect(() => {
     if (activeTab === 'notifications') {
@@ -752,7 +780,7 @@ export default function DashboardPage() {
 
           {activeTab === 'linked' && (
             <div className="space-y-8">
-              <h2 className="text-xl md:text-2xl font-black tracking-tight uppercase text-foreground font-headline">LINKED Authorization</h2>
+              <h2 className="text-xl md:text-2xl font-black tracking-tight uppercase text-foreground font-headline">MY GUARDIANS</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {links.length === 0 ? (
                   <div className="col-span-full bg-white rounded-[2rem] p-12 text-center opacity-30 flex flex-col items-center border border-black/5">
@@ -864,7 +892,7 @@ export default function DashboardPage() {
           {activeTab === 'notifications' && (
             <div className="space-y-8">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h2 className="text-xl md:text-2xl font-black tracking-tight uppercase text-foreground font-headline">Alert Stream</h2>
+                <h2 className="text-xl md:text-2xl font-black tracking-tight uppercase text-foreground font-headline">NOTIFICATION</h2>
                 {notifications.length > 0 && (
                   <Button 
                     onClick={() => setDeleteConfirm({ id: 'all', type: 'clear-notifications', name: 'All Alerts' })}
@@ -1390,3 +1418,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
