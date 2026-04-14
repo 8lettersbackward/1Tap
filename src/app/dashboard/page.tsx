@@ -195,8 +195,8 @@ export default function DashboardPage() {
 
   const navItems = useMemo(() => {
     return userRole === 'guardian' 
-      ? [{ id: 'guardian', label: 'RADAR', icon: Radar }, { id: 'linked', label: 'MY GUARDIANS', icon: ShieldCheck }, { id: 'notifications', label: 'NOTIFICATION', icon: Bell }, { id: 'settings', label: 'PROFILE', icon: UserIcon }]
-      : [{ id: 'buddies', label: 'MANAGE BUDDIES', icon: Users }, { id: 'nodes', label: 'MANAGE NODES', icon: Cpu }, { id: 'linked', label: 'MY GUARDIANS', icon: ShieldCheck }, { id: 'notifications', label: 'NOTIFICATION', icon: Bell }, { id: 'settings', label: 'PROFILE', icon: UserIcon }];
+      ? [{ id: 'guardian', label: 'RADAR', icon: Radar }, { id: 'linked', label: 'LINKED USER', icon: ShieldCheck }, { id: 'notifications', label: 'NOTIFICATION', icon: Bell }, { id: 'settings', label: 'PROFILE', icon: UserIcon }]
+      : [{ id: 'buddies', label: 'MANAGE BUDDIES', icon: Users }, { id: 'nodes', label: 'MANAGE NODES', icon: Cpu }, { id: 'linked', label: 'LINKED USER', icon: ShieldCheck }, { id: 'notifications', label: 'NOTIFICATION', icon: Bell }, { id: 'settings', label: 'PROFILE', icon: UserIcon }];
   }, [userRole]);
 
   const relayedAlertsRef = useRef<Set<string>>(new Set());
@@ -415,8 +415,7 @@ export default function DashboardPage() {
     const hardwareId = formData.get('hardwareId') as string;
 
     const normalizedHardwareId = hardwareId.trim().toLowerCase();
-    const normalizedNodeName = nodeName.trim().toLowerCase();
-
+    
     const isHardwareIdDuplicate = nodes.some(n => n.hardwareId.toLowerCase() === normalizedHardwareId && n.id !== editingNode?.id);
     
     if (isHardwareIdDuplicate) {
@@ -778,7 +777,7 @@ export default function DashboardPage() {
 
           {activeTab === 'linked' && (
             <div className="space-y-8">
-              <h2 className="text-xl md:text-2xl font-black tracking-tight uppercase text-foreground">MY GUARDIANS</h2>
+              <h2 className="text-xl md:text-2xl font-black tracking-tight uppercase text-foreground">LINKED USER</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {links.length === 0 ? (
                   <div className="col-span-full bg-white rounded-[2rem] p-12 text-center opacity-30 flex flex-col items-center border border-black/5">
@@ -919,7 +918,7 @@ export default function DashboardPage() {
                       return (
                         <Collapsible key={n.id} className="mb-6 group/item">
                           <div className={cn("bg-white rounded-[2rem] border border-black/5 relative overflow-hidden transition-all duration-300 hover:shadow-lg flex gap-0")}>
-                            {/* Vertical Tactical Bar */}
+                            {/* Vertical Tactical Bar - 12px Width */}
                             <div className={cn("w-3 shrink-0", accentColor)} />
                             
                             <div className="flex-1 p-4 sm:p-6 flex flex-col min-w-0">
