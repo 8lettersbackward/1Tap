@@ -866,7 +866,7 @@ export default function DashboardPage() {
                                   )}
                                 >
                                   {linkedNode?.trackRequest ? <Zap className="h-3.5 w-3.5 mr-2 animate-pulse" /> : <ZapOff className="h-3.5 w-3.5 mr-2" />}
-                                  {linkedNode?.trackRequest ? "TRACKING ACTIVE" : "START TRACKING"}
+                                  {linkedNode?.trackRequest ? "TRACKING ACTIVE" : "TRACK"}
                                 </Button>
                               ) : link.trackingRequest === 'requested' ? (
                                 <Button disabled className="w-full h-12 bg-black/5 text-primary/40 text-[9px] font-black uppercase rounded-xl">
