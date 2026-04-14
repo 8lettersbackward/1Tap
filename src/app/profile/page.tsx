@@ -182,23 +182,23 @@ export default function ProfilePage() {
         <div className="md:col-span-2 space-y-10">
           <Card className="border-none shadow-2xl bg-white rounded-xl">
             <CardHeader className="border-b border-white/10">
-              <CardTitle className="text-sm uppercase font-bold tracking-[0.2em] text-foreground">Identification Profile</CardTitle>
+              <CardTitle className="text-base uppercase font-bold tracking-[0.2em] text-foreground">Identification Profile</CardTitle>
               <CardDescription className="text-[10px] uppercase text-muted-foreground">Core system identity settings.</CardDescription>
             </CardHeader>
             <form onSubmit={handleUpdateProfile}>
               <CardContent className="space-y-6 pt-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 text-muted-foreground">
+                    <Label className="text-xs font-bold uppercase tracking-widest flex items-center gap-2 text-foreground">
                       <IdCard className="h-3 w-3" /> Unique ID
                     </Label>
-                    <Input value={user.uid} disabled className="bg-background border-none rounded-md h-12 font-mono text-[10px] text-foreground" />
+                    <Input value={user.uid} disabled className="bg-background border-none rounded-md h-12 font-mono text-xs text-foreground" />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 text-muted-foreground">
+                    <Label className="text-xs font-bold uppercase tracking-widest flex items-center gap-2 text-foreground">
                       <Mail className="h-3 w-3" /> Master Email
                     </Label>
-                    <Input value={user.email || ""} disabled className="bg-background border-none rounded-md h-12 font-mono text-[10px] text-foreground" />
+                    <Input value={user.email || ""} disabled className="bg-background border-none rounded-md h-12 font-mono text-xs text-foreground" />
                   </div>
                 </div>
 
@@ -224,7 +224,7 @@ export default function ProfilePage() {
 
           <Card className="border-none shadow-2xl bg-white rounded-xl">
             <CardHeader className="border-b border-white/10">
-              <CardTitle className="text-sm uppercase font-bold tracking-[0.2em] text-foreground flex items-center gap-2">
+              <CardTitle className="text-base uppercase font-bold tracking-[0.2em] text-foreground flex items-center gap-2">
                 <Lock className="h-4 w-4" /> Change Password
               </CardTitle>
               <CardDescription className="text-[10px] uppercase text-muted-foreground">Update your master account password.</CardDescription>
