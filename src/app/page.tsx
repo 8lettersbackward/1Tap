@@ -63,7 +63,7 @@ export default function Home() {
 
       <footer className="py-8 md:py-12 text-center text-muted-foreground font-bold text-[8px] md:text-[10px] tracking-[0.2em] md:tracking-[0.3em] uppercase relative z-10">
         <div className="max-w-7xl mx-auto px-6">
-          <p>© 2024 1TAP SECURE. NEOMORPHIC HUB v2.0</p>
+          <p>© 2026 1TAP SECURE. NEOMORPHIC HUB v2.0</p>
         </div>
       </footer>
     </div>
