@@ -116,7 +116,7 @@ export default function DashboardPage() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [radarSearchTerm, setRadarSearchTerm] = useState("");
   const [hasNewAlerts, setHasNewAlerts] = useState(false);
-  const [lastReadTimestamp, setLastReadTimestamp] = useState<number>(Date.now());
+  const [lastReadTimestamp, setLastReadTimestamp] = useState<number>(0);
 
   const [isBuddyDialogOpen, setIsBuddyDialogOpen] = useState(false);
   const [isNodeDialogOpen, setIsNodeDialogOpen] = useState(false);
@@ -203,6 +203,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     setHasMounted(true);
+    setLastReadTimestamp(Date.now());
+    
     if (!userLoading) {
       if (!user) {
         router.push("/login");
@@ -228,7 +230,7 @@ export default function DashboardPage() {
         const now = Date.now();
         const timestamp = val.timestamp || val.createdAt || 0;
         
-        if (activeTab !== 'notifications' && (timestamp > lastReadTimestamp)) {
+        if (activeTab !== 'notifications' && (timestamp > lastReadTimestamp) && lastReadTimestamp !== 0) {
           setHasNewAlerts(true);
         }
 
@@ -248,7 +250,8 @@ export default function DashboardPage() {
                     ...val,
                     isRelay: true,
                     originalUser: user.email,
-                    relayTimestamp: serverTimestamp()
+                    relayTimestamp: serverTimestamp(),
+                    createdAt: serverTimestamp()
                   };
                 });
                 update(ref(rtdb), relayUpdates).catch(e => console.error("SOS Relay Failure", e));
