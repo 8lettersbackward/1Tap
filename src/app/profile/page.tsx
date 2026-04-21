@@ -182,20 +182,20 @@ export default function ProfilePage() {
         <div className="md:col-span-2 space-y-10">
           <Card className="border border-black/5 shadow-sm bg-white rounded-3xl">
             <CardHeader className="border-b border-black/5">
-              <CardTitle className="text-lg uppercase font-black tracking-[0.2em] text-foreground">IDENTIFICATION PROFILE</CardTitle>
+              <CardTitle className="text-xl uppercase font-black tracking-[0.2em] text-foreground">IDENTIFICATION PROFILE</CardTitle>
               <CardDescription className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Core system identity settings.</CardDescription>
             </CardHeader>
             <form onSubmit={handleUpdateProfile}>
               <CardContent className="space-y-6 pt-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label className="text-xs font-black uppercase tracking-widest flex items-center gap-2 text-foreground">
+                    <Label className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-foreground">
                       <IdCard className="h-3 w-3" /> Unique ID
                     </Label>
                     <Input value={user.uid} disabled className="bg-[#F8FAFC] border-none rounded-xl h-12 font-mono text-sm text-foreground font-black opacity-100" />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-black uppercase tracking-widest flex items-center gap-2 text-foreground">
+                    <Label className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-foreground">
                       <Mail className="h-3 w-3" /> Master Email
                     </Label>
                     <Input value={user.email || ""} disabled className="bg-[#F8FAFC] border-none rounded-xl h-12 font-mono text-sm text-foreground font-black opacity-100" />
@@ -224,7 +224,7 @@ export default function ProfilePage() {
 
           <Card className="border border-black/5 shadow-sm bg-white rounded-3xl">
             <CardHeader className="border-b border-black/5">
-              <CardTitle className="text-lg uppercase font-black tracking-[0.2em] text-foreground flex items-center gap-2">
+              <CardTitle className="text-xl uppercase font-black tracking-[0.2em] text-foreground flex items-center gap-2">
                 <Lock className="h-4 w-4" /> CHANGE PASSWORD
               </CardTitle>
               <CardDescription className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Update your master account password.</CardDescription>

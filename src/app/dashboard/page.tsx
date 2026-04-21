@@ -25,7 +25,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@/AlertDialog";
 import { 
   Settings, 
   Bell, 
@@ -117,6 +117,7 @@ export default function DashboardPage() {
   const [radarSearchTerm, setRadarSearchTerm] = useState("");
   const [hasNewAlerts, setHasNewAlerts] = useState(false);
   const [lastReadTimestamp, setLastReadTimestamp] = useState<number>(0);
+  const lastReadRef = useRef<number>(0);
 
   const [isBuddyDialogOpen, setIsBuddyDialogOpen] = useState(false);
   const [isNodeDialogOpen, setIsNodeDialogOpen] = useState(false);
@@ -201,9 +202,12 @@ export default function DashboardPage() {
 
   const relayedAlertsRef = useRef<Set<string>>(new Set());
 
+  // Mount/Auth Effect
   useEffect(() => {
     setHasMounted(true);
-    setLastReadTimestamp(Date.now());
+    const now = Date.now();
+    lastReadRef.current = now;
+    setLastReadTimestamp(now);
     
     if (!userLoading) {
       if (!user) {
@@ -212,7 +216,10 @@ export default function DashboardPage() {
         router.push("/verify-email");
       }
     }
-    
+  }, [user, userLoading, router]);
+
+  // Real-time Listener and Profile Effect
+  useEffect(() => {
     if (user && rtdb) {
       const profileRef = ref(rtdb, `users/${user.uid}/profile`);
       get(profileRef).then(snapshot => {
@@ -230,7 +237,8 @@ export default function DashboardPage() {
         const now = Date.now();
         const timestamp = val.timestamp || val.createdAt || 0;
         
-        if (activeTab !== 'notifications' && (timestamp > lastReadTimestamp) && lastReadTimestamp !== 0) {
+        // Use Ref value for loop safety
+        if (activeTab !== 'notifications' && (timestamp > lastReadRef.current) && lastReadRef.current !== 0) {
           setHasNewAlerts(true);
         }
 
@@ -262,12 +270,14 @@ export default function DashboardPage() {
       });
       return () => off(notifRef, 'child_added', listener);
     }
-  }, [user, userLoading, router, rtdb, activeTab, lastReadTimestamp, userRole, linksData]);
+  }, [user, rtdb, activeTab, userRole, linksData]);
 
   useEffect(() => {
     if (activeTab === 'notifications') {
       setHasNewAlerts(false);
-      setLastReadTimestamp(Date.now());
+      const now = Date.now();
+      lastReadRef.current = now;
+      setLastReadTimestamp(now);
     }
   }, [activeTab]);
 
