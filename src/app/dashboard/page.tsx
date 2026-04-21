@@ -25,7 +25,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/AlertDialog";
+} from "@/components/ui/alert-dialog";
 import { 
   Settings, 
   Bell, 
@@ -198,17 +198,20 @@ export default function DashboardPage() {
     return userRole === 'guardian' 
       ? [{ id: 'guardian', label: 'RADAR', icon: Radar }, { id: 'linked', label: 'LINKED USER', icon: ShieldCheck }, { id: 'notifications', label: 'NOTIFICATION', icon: Bell }, { id: 'settings', label: 'PROFILE', icon: UserIcon }]
       : [{ id: 'buddies', label: 'MANAGE BUDDIES', icon: Users }, { id: 'nodes', label: 'MANAGE NODES', icon: Cpu }, { id: 'linked', label: 'LINKED USER', icon: ShieldCheck }, { id: 'notifications', label: 'NOTIFICATION', icon: Bell }, { id: 'settings', label: 'PROFILE', icon: UserIcon }];
-  }, [userRole]);
+  }, [userRole, UserIcon]);
 
   const relayedAlertsRef = useRef<Set<string>>(new Set());
 
-  // Mount/Auth Effect
+  // Mount/Auth Initialization
   useEffect(() => {
     setHasMounted(true);
     const now = Date.now();
     lastReadRef.current = now;
     setLastReadTimestamp(now);
-    
+  }, []);
+
+  // Auth Redirection
+  useEffect(() => {
     if (!userLoading) {
       if (!user) {
         router.push("/login");
@@ -237,7 +240,6 @@ export default function DashboardPage() {
         const now = Date.now();
         const timestamp = val.timestamp || val.createdAt || 0;
         
-        // Use Ref value for loop safety
         if (activeTab !== 'notifications' && (timestamp > lastReadRef.current) && lastReadRef.current !== 0) {
           setHasNewAlerts(true);
         }
@@ -1014,7 +1016,7 @@ export default function DashboardPage() {
                 ) : radarSearchResults.length === 0 ? (
                   <div className="col-span-full bg-white rounded-[2rem] p-12 text-center opacity-30 flex flex-col items-center border border-black/5">
                     <ShieldX className="h-12 w-12 mb-6 text-destructive/60" />
-                    <p className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground">No Asset Signature Detected</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-foreground">No Asset Signature Detected</p>
                   </div>
                 ) : (
                   radarSearchResults.map(node => {
