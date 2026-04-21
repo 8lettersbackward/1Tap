@@ -117,6 +117,7 @@ export default function DashboardPage() {
   const [radarSearchTerm, setRadarSearchTerm] = useState("");
   const [hasNewAlerts, setHasNewAlerts] = useState(false);
   const lastReadRef = useRef<number>(0);
+  const interceptedAlertsRef = useRef<Set<string>>(new Set());
 
   const [isBuddyDialogOpen, setIsBuddyDialogOpen] = useState(false);
   const [isNodeDialogOpen, setIsNodeDialogOpen] = useState(false);
@@ -220,10 +221,9 @@ export default function DashboardPage() {
     if (profileData) {
       const role = profileData.role || 'user';
       setUserRole(role);
-      // Hardened tab redirection to prevent flicker
-      if (role === 'guardian' && (activeTab === 'buddies' || activeTab === 'nodes' || activeTab === 'notifications')) {
+      if (role === 'guardian' && (activeTab === 'buddies' || activeTab === 'nodes')) {
         setActiveTab('guardian');
-      } else if (role === 'user' && (activeTab === 'guardian' || activeTab === 'notifications')) {
+      } else if (role === 'user' && activeTab === 'guardian') {
         setActiveTab('buddies');
       }
     }
@@ -236,23 +236,26 @@ export default function DashboardPage() {
         const val = snapshot.val();
         const now = Date.now();
         const timestamp = val.timestamp || val.createdAt || 0;
+        const alertId = snapshot.key || 'unknown';
         
         if (activeTab !== 'notifications' && (timestamp > lastReadRef.current) && lastReadRef.current !== 0) {
           setHasNewAlerts(true);
         }
 
         if (val.type === 'sos' && val.trigger !== 'TrackResponse' && (now - timestamp < 45000)) {
-          setInterceptAlert({ ...val, id: snapshot.key });
+          if (!interceptedAlertsRef.current.has(alertId)) {
+            interceptedAlertsRef.current.add(alertId);
+            setInterceptAlert({ ...val, id: alertId });
+          }
           
           if (userRole === 'user' && !val.isRelay && !val.relayed) {
-            const currentAlertId = snapshot.key || 'unknown';
-            if (!relayedAlertsRef.current.has(currentAlertId)) {
-              relayedAlertsRef.current.add(currentAlertId);
+            if (!relayedAlertsRef.current.has(alertId)) {
+              relayedAlertsRef.current.add(alertId);
               
               const guardianLinks = Object.entries(linksData || {}).filter(([_, l]: [string, any]) => l.status === 'linked');
               if (guardianLinks.length > 0) {
                 const relayUpdates: any = {};
-                relayUpdates[`users/${user.uid}/notifications/${currentAlertId}/relayed`] = true;
+                relayUpdates[`users/${user.uid}/notifications/${alertId}/relayed`] = true;
                 
                 guardianLinks.forEach(([guardianUid, _]) => {
                   const relayKey = push(ref(rtdb, `users/${guardianUid}/notifications`)).key;
