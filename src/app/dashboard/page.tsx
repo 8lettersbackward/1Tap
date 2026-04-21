@@ -116,7 +116,6 @@ export default function DashboardPage() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [radarSearchTerm, setRadarSearchTerm] = useState("");
   const [hasNewAlerts, setHasNewAlerts] = useState(false);
-  const [lastReadTimestamp, setLastReadTimestamp] = useState<number>(0);
   const lastReadRef = useRef<number>(0);
 
   const [isBuddyDialogOpen, setIsBuddyDialogOpen] = useState(false);
@@ -133,6 +132,7 @@ export default function DashboardPage() {
   const [pendingUpdate, setPendingUpdate] = useState<{ type: 'buddy' | 'node', data: any } | null>(null);
   const [interceptAlert, setInterceptAlert] = useState<any>(null);
 
+  const profileRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/profile`) : null, [rtdb, user]);
   const buddiesRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/buddies`) : null, [rtdb, user]);
   const nodesRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/nodes`) : null, [rtdb, user]);
   const groupsRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/buddyGroups`) : null, [rtdb, user]);
@@ -140,6 +140,7 @@ export default function DashboardPage() {
   const linksRef = useMemo(() => user ? ref(rtdb, `users/${user.uid}/links`) : null, [rtdb, user]);
   const allUsersRef = useMemo(() => (user && rtdb) ? ref(rtdb, `users`) : null, [rtdb, user]);
 
+  const { data: profileData, loading: roleLoading } = useRtdb(profileRef);
   const { data: buddiesData } = useRtdb(buddiesRef);
   const { data: nodesData } = useRtdb(nodesRef);
   const { data: groupsData } = useRtdb(groupsRef);
@@ -192,7 +193,7 @@ export default function DashboardPage() {
     });
   }, [availableNodes, radarSearchTerm]);
 
-  const currentName = useMemo(() => user?.email?.split('@')[0] || "Personnel", [user]);
+  const currentName = useMemo(() => profileData?.displayName || user?.email?.split('@')[0] || "Personnel", [user, profileData]);
 
   const navItems = useMemo(() => {
     return userRole === 'guardian' 
@@ -204,33 +205,32 @@ export default function DashboardPage() {
 
   useEffect(() => {
     setHasMounted(true);
-    const now = Date.now();
-    lastReadRef.current = now;
-    setLastReadTimestamp(now);
+    lastReadRef.current = Date.now();
   }, []);
 
   useEffect(() => {
-    if (!userLoading) {
-      if (!user) {
-        router.push("/login");
-      } else if (!user.emailVerified) {
-        router.push("/verify-email");
+    if (!userLoading && !user && hasMounted) {
+      router.push("/login");
+    } else if (user && !user.emailVerified && hasMounted) {
+      router.push("/verify-email");
+    }
+  }, [user, userLoading, router, hasMounted]);
+
+  useEffect(() => {
+    if (profileData) {
+      const role = profileData.role || 'user';
+      setUserRole(role);
+      if (role === 'guardian' && (activeTab === 'buddies' || activeTab === 'nodes')) {
+        setActiveTab('guardian');
+      }
+      if (role === 'user' && activeTab === 'guardian') {
+        setActiveTab('buddies');
       }
     }
-  }, [user, userLoading, router]);
+  }, [profileData, activeTab]);
 
   useEffect(() => {
     if (user && rtdb) {
-      const profileRef = ref(rtdb, `users/${user.uid}/profile`);
-      get(profileRef).then(snapshot => {
-        const profile = snapshot.val();
-        const role = profile?.role || 'user';
-        setUserRole(role);
-        if (role === 'guardian' && (activeTab === 'buddies' || activeTab === 'nodes')) {
-          setActiveTab('guardian');
-        }
-      });
-
       const notifRef = ref(rtdb, `users/${user.uid}/notifications`);
       const listener = onChildAdded(notifRef, (snapshot) => {
         const val = snapshot.val();
@@ -252,7 +252,6 @@ export default function DashboardPage() {
               const guardianLinks = Object.entries(linksData || {}).filter(([_, l]: [string, any]) => l.status === 'linked');
               if (guardianLinks.length > 0) {
                 const relayUpdates: any = {};
-                // Mark original as relayed in DB to prevent multi-device re-relay
                 relayUpdates[`users/${user.uid}/notifications/${currentAlertId}/relayed`] = true;
                 
                 guardianLinks.forEach(([guardianUid, _]) => {
@@ -278,9 +277,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (activeTab === 'notifications') {
       setHasNewAlerts(false);
-      const now = Date.now();
-      lastReadRef.current = now;
-      setLastReadTimestamp(now);
+      lastReadRef.current = Date.now();
     }
   }, [activeTab]);
 
@@ -577,7 +574,7 @@ export default function DashboardPage() {
     }
   };
 
-  if (userLoading || !hasMounted) {
+  if (userLoading || roleLoading || !hasMounted) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background text-foreground">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -1058,7 +1055,7 @@ export default function DashboardPage() {
                <div className="bg-white rounded-[2rem] p-12 flex flex-col items-center gap-8 border border-black/5 shadow-sm">
                   <div className="h-32 w-32 bg-primary/5 rounded-[2rem] flex items-center justify-center text-4xl font-black text-primary border border-primary/10">{currentName[0].toUpperCase()}</div>
                   <div className="text-center space-y-2">
-                    <p className="text-xl font-black uppercase tracking-[0.2em] text-foreground">{currentName}</p>
+                    <p className="text-xl font-black uppercase tracking-[0.2em] text-black">{currentName}</p>
                     <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">{user?.email}</p>
                   </div>
                   <Button onClick={() => router.push('/profile')} className="h-12 px-8 text-[10px] font-black uppercase tracking-[0.3em] bg-white border border-black/5 text-foreground hover:text-primary transition-all rounded-xl shadow-sm">
@@ -1459,4 +1456,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-

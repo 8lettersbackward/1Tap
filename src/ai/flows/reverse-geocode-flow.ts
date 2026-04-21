@@ -36,9 +36,9 @@ const reverseGeocodeFlow = ai.defineFlow(
 
     if (!output) {
       return { 
-        city: "Unknown Sector", 
-        province: "Unknown District", 
-        country: "Unknown Territory" 
+        city: "TACTICAL FIX", 
+        province: "ACTIVE SECTOR", 
+        country: "SECURE TERRITORY" 
       };
     }
 
